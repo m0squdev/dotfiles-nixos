@@ -1,8 +1,8 @@
 # dotfiles-nixos
 
 My **NixOS + [niri](https://github.com/YaLTeR/niri)** Wayland desktop, themed
-**Catppuccin Mocha** (mauve accent) — the whole thing: OS config *and* every
-dotfile, managed as a **Nix flake** with **[Home Manager](https://github.com/nix-community/home-manager)**.
+**Catppuccin Mocha** (mauve accent): OS config *and* every dotfile, managed as a
+**Nix flake** with **[Home Manager](https://github.com/nix-community/home-manager)**.
 
 One command rebuilds the operating system and lays down all the user configs at
 once, and it rolls back as a unit if anything goes wrong.
@@ -28,7 +28,7 @@ sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
 | Qt / KDE theme | **Kvantum** `catppuccin-mocha-mauve` · qt6ct |
 | Text-editor theme | GtkSourceView 5 Catppuccin Mocha scheme (GNOME Text Editor) |
 | Input method | **fcitx5 + Mozc** (Japanese; US-intl / US / JP cycling) |
-| GPU | NVIDIA GTX 1650 — proprietary driver (reliable suspend/resume) |
+| GPU | NVIDIA GTX 1650, proprietary driver (reliable suspend/resume) |
 | Login | GDM → niri session |
 
 ---
@@ -41,7 +41,7 @@ dotfiles-nixos/
 ├── flake.lock                 # exact input versions (reproducibility)
 ├── nixos/
 │   ├── configuration.nix       # the system config (verbatim from /etc/nixos)
-│   ├── hardware-configuration.nix   # ⚠ machine-specific — REGENERATE on other machines
+│   ├── hardware-configuration.nix   # ⚠ machine-specific: REGENERATE on other machines
 │   └── kgx-catppuccin-mocha.patch   # applied to gnome-console by an overlay
 ├── home/
 │   └── home.nix                # Home Manager: which dotfile goes where
@@ -60,13 +60,13 @@ dotfiles-nixos/
 ## Where every file goes
 
 With this flake, **Home Manager places all of these automatically** (as symlinks)
-on `nixos-rebuild switch`. The table is here so you know the mapping — and so you
+on `nixos-rebuild switch`. The table is here so you know the mapping, and so you
 can place them by hand if you *don't* use the flake.
 
 | In this repo | Ends up at | Placed by |
 |---|---|---|
-| `nixos/configuration.nix` | *(read directly by the flake)* — replaces `/etc/nixos/configuration.nix` | flake |
-| `nixos/hardware-configuration.nix` | *(read by the flake)* — **regenerate per machine** | flake |
+| `nixos/configuration.nix` | *(read directly by the flake)*, replaces `/etc/nixos/configuration.nix` | flake |
+| `nixos/hardware-configuration.nix` | *(read by the flake)*, **regenerate per machine** | flake |
 | `nixos/kgx-catppuccin-mocha.patch` | applied to `gnome-console` via overlay | `configuration.nix` |
 | `config/niri/` | `~/.config/niri/` | Home Manager |
 | `config/waybar/` | `~/.config/waybar/` | Home Manager |
@@ -92,7 +92,7 @@ can place them by hand if you *don't* use the flake.
 ## Replicating this build on a fresh machine
 
 > Requires **NixOS 26.05** with flakes enabled. (This config enables flakes for
-> you, but you need them on to *build* it the first time — pass
+> you, but you need them on to *build* it the first time; pass
 > `--extra-experimental-features 'nix-command flakes'` if your current system
 > doesn't have them yet.)
 
@@ -102,14 +102,14 @@ can place them by hand if you *don't* use the flake.
    git clone https://github.com/m0squdev/dotfiles-nixos.git
    ```
 
-2. **Regenerate the hardware config** — mine describes *my* disks/kernel modules
-   and will not match yours:
+2. **Regenerate the hardware config** (mine describes *my* disks/kernel modules
+   and won't match yours):
    ```
    sudo nixos-generate-config --show-hardware-config \
      > ~/PWUE/dotfiles-nixos/nixos/hardware-configuration.nix
    ```
 
-3. **Make it yours** — search-and-replace where needed:
+3. **Make it yours.** Search-and-replace where needed:
    - **Username**: `valer` → yours, in `flake.nix`, `home/home.nix`, and the
      hardcoded `/home/valer/...` paths inside `config/niri/` and `config/waybar/`
      (niri's `spawn` can't expand `~`, so those paths are absolute).
@@ -120,47 +120,10 @@ can place them by hand if you *don't* use the flake.
    - Swap `assets/wallpapers/wall.jpg` for your own if you like (niri falls back
      to a solid Catppuccin base colour if it's missing).
 
-4. **Build it** (git must have the files tracked — `git add -A` first if you edited):
+4. **Build it** (git must have the files tracked; `git add -A` first if you edited):
    ```
    sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
    ```
    Existing dotfiles it wants to manage are backed up as `*.hm-bak`.
 
 5. **Log out and pick the niri session** at the GDM login screen.
-
----
-
-## Making changes afterwards
-
-Because Home Manager symlinks the live copies to **read-only** paths in the Nix
-store, **edit the files in this repo**, then rebuild:
-
-```
-$EDITOR ~/PWUE/dotfiles-nixos/config/niri/config.kdl
-sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
-```
-
-Editing `~/.config/niri/config.kdl` directly won't work — it points into
-`/nix/store`. (If you'd rather live-edit a particular config, ask for a
-`mkOutOfStoreSymlink` on it — that trades a bit of reproducibility for direct
-editing.)
-
-**Optional convenience:** so plain `sudo nixos-rebuild switch` (no `--flake`)
-uses this repo, symlink the flake into place once:
-`sudo ln -s ~/PWUE/dotfiles-nixos/flake.nix /etc/nixos/flake.nix`.
-
----
-
-## Intentionally *not* included
-
-For privacy and because it's per-machine runtime state, this repo leaves out:
-browser profiles (Zen, Firefox), mail/online accounts (Geary, Evolution, GOA),
-KDE Connect device pairings, fcitx5/Mozc runtime databases, `dconf`, and caches.
-
-A few GNOME/`gsettings` (`dconf`) values — e.g. the GTK theme *name* — aren't
-captured here; set them per the notes if a fresh GNOME session doesn't pick up
-the theme.
-
----
-
-*Built together, one rebuild at a time. 🐧🎨*
