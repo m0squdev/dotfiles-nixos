@@ -1,0 +1,14 @@
+# Nix build artifacts
+result
+result-*
+
+# Home Manager backups created on the first switch
+*.hm-bak
+
+# Editor / OS cruft
+*.swp
+*~
+.DS_Store
+
+# NOTE: flake.lock is intentionally NOT ignored — it pins exact input versions
+# and is what makes this build reproducible for everyone who clones it.

@@ -1,0 +1,178 @@
+// Waybar config for niri — Catppuccin Mocha
+// Docs: https://github.com/Alexays/Waybar/wiki
+{
+    "layer": "top",
+    "position": "top",
+    "height": 34,
+    "spacing": 4,
+    "margin-top": 6,
+    "margin-left": 8,
+    "margin-right": 8,
+    "idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": { "activated": "󰅶", "deactivated": "󰅶" },
+        "tooltip-format-activated": "Caffeine on — screen stays awake",
+        "tooltip-format-deactivated": "Caffeine off"
+    },
+
+    "pulseaudio": {
+        "format": "{icon}",
+        "format-muted": "󰸈",
+        "format-icons": { "default": "󰕾" },
+        "scroll-step": 5,
+        "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+        "on-click-right": "/home/valer/.config/waybar/scripts/audio-switch.sh sink",
+        "tooltip-format": "Volume {volume}%  ·  scroll to change, click to mute"
+    },
+
+    "custom/mic": {
+        "format": "{}",
+        "return-type": "json",
+        "exec": "/home/valer/.config/waybar/scripts/mic.sh status",
+        "interval": 2,
+        "signal": 8,
+        "on-click": "/home/valer/.config/waybar/scripts/mic.sh toggle",
+        "on-click-right": "/home/valer/.config/waybar/scripts/audio-switch.sh source",
+        "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 5%+",
+        "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 5%-"
+    },
+
+    "bluetooth": {
+        "format": "󰂯",
+        "format-off": "󰂲",
+        "format-disabled": "󰂲",
+        "format-connected": "󰂱 {num_connections}",
+        "tooltip-format": "{controller_alias}  ·  {status}",
+        "tooltip-format-connected": "{controller_alias}\n{num_connections} connected\n{device_enumerate}",
+        "on-click": "/home/valer/.config/swaync/toggles.sh bt toggle",
+        "on-click-right": "/home/valer/.config/waybar/scripts/bt-menu.sh"
+    },
+
+    "network": {
+        "format-wifi": "󰖩",
+        "format-ethernet": "󰈀",
+        "format": "󰖪",
+        "format-disconnected": "󰖪",
+        "format-disabled": "󰖪",
+        "tooltip-format-wifi": "{essid}  ·  {signalStrength}%\n{ipaddr}",
+        "tooltip-format-ethernet": "{ifname}  ·  {ipaddr}",
+        "tooltip-format-disconnected": "Disconnected",
+        "on-click": "/home/valer/.config/swaync/toggles.sh wifi toggle",
+        "on-click-right": "/home/valer/.config/waybar/scripts/wifi-menu.sh"
+    },
+
+    // Input indicator: same look as the old niri/language module (󰌌 us intl / 󰌌 us)
+    // but shows "󰌌 jp" when fcitx5/Mozc is active — which the built-in module can't.
+    // Click cycles US-intl -> US -> jp via cycle-input.sh (same as Mod+K). Polled
+    // every 2s + poked instantly by cycle-input.sh (signal 7).
+    "custom/inputlang": {
+        "exec": "/home/valer/.config/waybar/scripts/input-state.sh",
+        "interval": 2,
+        "signal": 7,
+        "on-click": "/home/valer/.config/niri/cycle-input.sh",
+        "tooltip": false
+    },
+
+    "custom/power": {
+        "format": "󰐥",
+        "tooltip": false,
+        "on-click": "/home/valer/.config/waybar/scripts/powermenu.sh"
+    },
+
+    "modules-left": ["niri/workspaces", "custom/window", "group/systray"],
+    "modules-center": ["clock"],
+    "modules-right": ["idle_inhibitor", "pulseaudio", "custom/mic", "bluetooth", "network", "custom/inputlang", "custom/power", "battery"],
+
+    "niri/workspaces": {
+        "format": "{icon}",
+        "format-icons": {
+            "active": "●",
+            "default": "○"
+        }
+    },
+
+    // Focused window title, falling back to the live hostname when nothing is
+    // focused. See scripts/window-title.sh (single output — no separate-outputs).
+    // One-shot script (exits immediately — nothing Waybar can block on). It runs
+    // once at start and then only when poked with SIGRTMIN+9, which the separate
+    // window-title-watch.sh listener sends on every niri focus/title change. That
+    // gives instant updates without a long-lived child for Waybar to wait on.
+    "custom/window": {
+        "exec": "/home/valer/.config/waybar/scripts/window-title.sh",
+        "interval": "once",
+        "signal": 9,
+        "format": "{}",
+        "max-length": 60,
+        "escape": true,
+        "tooltip": false
+    },
+
+    "clock": {
+        "format": " {:%H:%M}",
+        "tooltip": false,
+        "on-click": "swaync-client -t -sw"
+    },
+
+    "battery": {
+        "states": { "warning": 30, "critical": 15 },
+        "format": "{icon} {capacity}%",
+        "format-charging": " {capacity}%",
+        "format-plugged": " {capacity}%",
+        "format-icons": ["", "", "", "", ""],
+        "interval": 30
+    },
+
+    // The whole tray is ONE pill now (background on #tray container, see style.css).
+    //   icon-size 16 — small, ~matching the bar's Nerd-Font glyphs and text.
+    //   spacing 6 — the gap BETWEEN icons INSIDE the shared pill (kept tight so
+    //     they read as one grouped module, not spaced-out separate items).
+    "tray": {
+        "icon-size": 16,
+        "spacing": 6
+    },
+
+    // Appindicators collapsed behind a single handle icon, placed after the
+    // window title. Hover the handle to reveal the tray; it hides on leave.
+    "group/systray": {
+        "orientation": "horizontal",
+        "drawer": {
+            "transition-duration": 300,
+            "transition-left-to-right": true,
+            "children-class": "tray-drawer"
+        },
+        "modules": ["custom/tray-handle", "tray"]
+    },
+
+    // Shows the dots only when the tray has items; empty output hides it (so no
+    // handle appears when there are no background appindicators). See the script.
+    "custom/tray-handle": {
+        "exec": "/home/valer/.config/waybar/scripts/tray-handle.sh",
+        "interval": 2,
+        "format": "{}",
+        "tooltip": false
+    },
+
+    // Quick Settings button — opens the swaync control center (Wi-Fi / Bluetooth /
+    // Dark mode toggles, volume slider, DND switch, media, notifications).
+    // Left click: open panel  ·  Right click: toggle Do Not Disturb
+    "custom/notification": {
+        "tooltip": false,
+        "format": "{icon}",
+        "format-icons": {
+            "none": "",
+            "notification": "<span foreground='#f38ba8'></span>",
+            "dnd-none": "",
+            "dnd-notification": "<span foreground='#f38ba8'></span>",
+            "inhibited-none": "",
+            "inhibited-notification": "<span foreground='#f38ba8'></span>",
+            "dnd-inhibited-none": "",
+            "dnd-inhibited-notification": "<span foreground='#f38ba8'></span>"
+        },
+        "return-type": "json",
+        "exec-if": "which swaync-client",
+        "exec": "swaync-client -swb",
+        "on-click": "swaync-client -t -sw",
+        "on-click-right": "swaync-client -d -sw",
+        "escape": true
+    }
+}

@@ -1,0 +1,71 @@
+--- a/src/kgx-livery-manager.c	2026-07-13 22:44:23.512875393 +0200
++++ b/src/kgx-livery-manager.c	2026-07-13 22:44:52.700059370 +0200
+@@ -124,35 +124,36 @@
+ {
+   g_autoptr (KgxPalette) night = NULL;
+   g_autoptr (KgxPalette) day = NULL;
++  /* Catppuccin Mocha — official terminal ANSI mapping */
+   GdkRGBA night_colours[16] = {
+-    GDK_RGBA ("241f31"), /* Black          */
+-    GDK_RGBA ("c01c28"), /* Red            */
+-    GDK_RGBA ("2ec27e"), /* Green          */
+-    GDK_RGBA ("f5c211"), /* Yellow         */
+-    GDK_RGBA ("1e78e4"), /* Blue           */
+-    GDK_RGBA ("9841bb"), /* Magenta        */
+-    GDK_RGBA ("0ab9dc"), /* Cyan           */
+-    GDK_RGBA ("c0bfbc"), /* White          */
+-    GDK_RGBA ("5e5c64"), /* Bright Black   */
+-    GDK_RGBA ("ed333b"), /* Bright Red     */
+-    GDK_RGBA ("57e389"), /* Bright Green   */
+-    GDK_RGBA ("f8e45c"), /* Bright Yellow  */
+-    GDK_RGBA ("51a1ff"), /* Bright Blue    */
+-    GDK_RGBA ("c061cb"), /* Bright Magenta */
+-    GDK_RGBA ("4fd2fd"), /* Bright Cyan    */
+-    GDK_RGBA ("f6f5f4"), /* Bright White   */
++    GDK_RGBA ("45475a"), /* Black          surface1 */
++    GDK_RGBA ("f38ba8"), /* Red            red      */
++    GDK_RGBA ("a6e3a1"), /* Green          green    */
++    GDK_RGBA ("f9e2af"), /* Yellow         yellow   */
++    GDK_RGBA ("89b4fa"), /* Blue           blue     */
++    GDK_RGBA ("f5c2e7"), /* Magenta        pink     */
++    GDK_RGBA ("94e2d5"), /* Cyan           teal     */
++    GDK_RGBA ("bac2de"), /* White          subtext1 */
++    GDK_RGBA ("585b70"), /* Bright Black   surface2 */
++    GDK_RGBA ("f38ba8"), /* Bright Red     red      */
++    GDK_RGBA ("a6e3a1"), /* Bright Green   green    */
++    GDK_RGBA ("f9e2af"), /* Bright Yellow  yellow   */
++    GDK_RGBA ("89b4fa"), /* Bright Blue    blue     */
++    GDK_RGBA ("f5c2e7"), /* Bright Magenta pink     */
++    GDK_RGBA ("94e2d5"), /* Bright Cyan    teal     */
++    GDK_RGBA ("a6adc8"), /* Bright White   subtext0 */
+   };
+ 
+-  night = kgx_palette_new (&((GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }),
+-                           &((GdkRGBA) { 0.11, 0.11, 0.12, 1.0 }),
+-                           0.04,
++  /* Catppuccin Mocha: foreground = text #cdd6f4, background = base #1e1e2e */
++  night = kgx_palette_new (&((GdkRGBA) { 0.803922, 0.839216, 0.956863, 1.0 }),
++                           &((GdkRGBA) { 0.117647, 0.117647, 0.180392, 1.0 }),
++                           0.0,
+                            G_N_ELEMENTS (night_colours),
+                            night_colours);
+ 
+-  day = kgx_palette_new (&((GdkRGBA) { 0.0, 0.0, 0.0, 1.0 }),
+-                         &((GdkRGBA) { 1.0, 1.0, 1.0, 1.0 }),
+-                         0.01,
+-                         /* TODO: Have some day colours */
++  day = kgx_palette_new (&((GdkRGBA) { 0.803922, 0.839216, 0.956863, 1.0 }),
++                         &((GdkRGBA) { 0.117647, 0.117647, 0.180392, 1.0 }),
++                         0.0,
+                          G_N_ELEMENTS (night_colours),
+                          night_colours);
+ 
+@@ -304,7 +305,7 @@
+ 
+   g_hash_table_remove_all (self->custom_liveries);
+ 
+-  while (g_variant_iter_next (iter, "(&sv)", &uuid, &value)) {
++  while (g_variant_iter_next (iter, "{&sv}", &uuid, &value)) {
+     g_autoptr (KgxLivery) livery = kgx_livery_deserialise (value);
+ 
+     if (g_strcmp0 (kgx_livery_get_uuid (livery), uuid) != 0) {

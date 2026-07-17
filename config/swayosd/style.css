@@ -1,0 +1,54 @@
+/* SwayOSD — Catppuccin Mocha (mauve accent, matching the rest of the desktop).
+ * Palette: base #1e1e2e · surface0 #313244 · surface1 #45475a
+ *          text #cdd6f4 · overlay0 #6c7086 · mauve #cba6f7
+ * SwayOSD reads this at startup; restart the server after edits:
+ *   pkill -x .swayosd-server ; swayosd-server &
+ *
+ * Note: no fade animation here on purpose. SwayOSD hides its window instantly
+ * and GTK4 won't replay a CSS @keyframes on re-show, so an `animation:` here
+ * does nothing (confirmed by screen-recording — the overlay pops in/out). */
+
+window#osd {
+  padding: 12px 18px;
+  border-radius: 16px;
+  border: 1px solid #45475a;             /* surface1 */
+  background-color: #1e1e2e;             /* base */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+window#osd #container {
+  margin: 0px 12px;
+}
+
+/* Icon + any text (e.g. the mute glyph / percentage) */
+window#osd image,
+window#osd label {
+  color: #cdd6f4;                        /* text */
+}
+
+window#osd progressbar {
+  min-height: 8px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+/* The empty part of the bar */
+window#osd trough {
+  min-height: inherit;
+  border-radius: inherit;
+  border: none;
+  background-color: #313244;             /* surface0 */
+}
+
+/* The filled part — the accent */
+window#osd progress {
+  min-height: inherit;
+  border-radius: inherit;
+  border: none;
+  background-color: #cba6f7;             /* mauve */
+}
+
+/* Muted state: desaturate the fill so "muted" reads at a glance */
+window#osd progressbar:disabled progress {
+  background-color: #6c7086;             /* overlay0 */
+}

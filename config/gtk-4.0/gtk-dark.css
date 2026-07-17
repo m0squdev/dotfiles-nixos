@@ -1,0 +1,95 @@
+/*
+ * Catppuccin Mocha — libadwaita named-color override (mauve accent)
+ *
+ * WHY THIS FILE EXISTS:
+ *   libadwaita apps (Nautilus, GNOME Text Editor, Settings, etc.) ignore the
+ *   `gtk-theme` setting entirely — they ship a baked-in Adwaita stylesheet and
+ *   only honour light/dark + these @define-color named colors, which they DO
+ *   read from ~/.config/gtk-4.0/gtk.css. Symlinking the full classic
+ *   catppuccin-gtk stylesheet here made libadwaita widgets fight two
+ *   stylesheets at once (the "half-themed Nautilus" look). Recoloring the
+ *   named colors instead keeps libadwaita's correct widget shapes and just
+ *   paints them Catppuccin Mocha.
+ *
+ *   Pure GTK4 (non-adwaita) and GTK3 apps still get the full theme via the
+ *   `gtk-theme` / adw-gtk3 mechanism — this file only adds color definitions
+ *   on top, it does not replace their theme.
+ *
+ * Palette: Catppuccin Mocha.  base #1e1e2e  mantle #181825  crust #11111b
+ *          surface0 #313244  text #cdd6f4  mauve #cba6f7
+ */
+
+/* Accent (mauve) */
+@define-color accent_color            #cba6f7;
+@define-color accent_bg_color         #cba6f7;
+@define-color accent_fg_color         #1e1e2e;
+
+/* Destructive (red) */
+@define-color destructive_color       #f38ba8;
+@define-color destructive_bg_color    #f38ba8;
+@define-color destructive_fg_color    #1e1e2e;
+
+/* Success (green) */
+@define-color success_color           #a6e3a1;
+@define-color success_bg_color        #a6e3a1;
+@define-color success_fg_color        #1e1e2e;
+
+/* Warning (yellow) */
+@define-color warning_color           #f9e2af;
+@define-color warning_bg_color        #f9e2af;
+@define-color warning_fg_color        #1e1e2e;
+
+/* Error (red) */
+@define-color error_color             #f38ba8;
+@define-color error_bg_color          #f38ba8;
+@define-color error_fg_color          #1e1e2e;
+
+/* Window */
+@define-color window_bg_color         #1e1e2e;
+@define-color window_fg_color         #cdd6f4;
+
+/* Views: file list area, text views */
+@define-color view_bg_color           #1e1e2e;
+@define-color view_fg_color           #cdd6f4;
+
+/* Headerbar */
+@define-color headerbar_bg_color         #181825;
+@define-color headerbar_fg_color         #cdd6f4;
+@define-color headerbar_border_color     #cdd6f4;
+@define-color headerbar_backdrop_color   @window_bg_color;
+@define-color headerbar_shade_color      rgba(0, 0, 0, 0.36);
+@define-color headerbar_darker_shade_color rgba(0, 0, 0, 0.36);
+
+/* Cards / boxed lists */
+@define-color card_bg_color           rgba(255, 255, 255, 0.05);
+@define-color card_fg_color           #cdd6f4;
+@define-color card_shade_color        rgba(0, 0, 0, 0.36);
+
+/* Thumbnails */
+@define-color thumbnail_bg_color      #313244;
+@define-color thumbnail_fg_color      #cdd6f4;
+
+/* Dialogs */
+@define-color dialog_bg_color         #181825;
+@define-color dialog_fg_color         #cdd6f4;
+
+/* Popovers (menus) */
+@define-color popover_bg_color        #181825;
+@define-color popover_fg_color        #cdd6f4;
+@define-color popover_shade_color     rgba(0, 0, 0, 0.36);
+
+/* Sidebar (Nautilus places pane) — libadwaita >= 1.4 */
+@define-color sidebar_bg_color        #181825;
+@define-color sidebar_fg_color        #cdd6f4;
+@define-color sidebar_backdrop_color  #181825;
+@define-color sidebar_border_color    rgba(0, 0, 0, 0.36);
+@define-color sidebar_shade_color     rgba(0, 0, 0, 0.36);
+
+@define-color secondary_sidebar_bg_color       #11111b;
+@define-color secondary_sidebar_fg_color       #cdd6f4;
+@define-color secondary_sidebar_backdrop_color #11111b;
+@define-color secondary_sidebar_border_color   rgba(0, 0, 0, 0.36);
+@define-color secondary_sidebar_shade_color    rgba(0, 0, 0, 0.36);
+
+/* Misc */
+@define-color scrollbar_outline_color rgba(0, 0, 0, 0.5);

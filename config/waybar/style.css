@@ -1,0 +1,138 @@
+/* Waybar — Catppuccin Mocha (mauve accent) */
+
+* {
+    font-family: "JetBrainsMono Nerd Font", "Font Awesome 6 Free", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 0;
+}
+
+window#waybar {
+    background: transparent;
+    color: #cdd6f4; /* text */
+}
+
+#window,
+#custom-window,
+#clock,
+#cpu,
+#memory,
+#idle_inhibitor,
+#pulseaudio,
+#custom-mic,
+#bluetooth,
+#network,
+#custom-inputlang,
+#custom-power,
+#battery,
+#custom-notification,
+#custom-tray-handle {
+    background-color: #1e1e2e; /* base */
+    border-radius: 12px;
+    padding: 2px 12px;
+    margin: 4px 3px;
+}
+
+/* Tray: ONE shared pill for the whole tray (like the window-title / language
+   modules), not a pill per icon. Why: Waybar SNI items ignore the CSS box model
+   (padding/margin/min-width/border are all no-ops on #tray > *; only background
+   + radius apply), so a per-item pill can only be a square hugging the icon —
+   it can't be a wide quick-settings-shaped pill. So we style the #tray CONTAINER
+   instead (a normal box that DOES respect the box model) and leave the items as
+   bare icons.
+     - margin 5px 0 → the pill is ~24px tall, centred in the 34px bar (the items
+       would otherwise stretch to fill the full height). ~matches the other
+       modules' pill height.
+     - padding 0 10px → the icons are inset from the pill's left/right edges.
+   Icon size and the gap BETWEEN icons live in config.jsonc (icon-size, spacing);
+   keep icon-size ~= the bar's glyph size (~16). */
+#tray {
+    background-color: #1e1e2e; /* base — one pill for the whole tray */
+    border-radius: 12px;
+    padding: 0 10px;
+    margin: 5px 3px;
+}
+#tray > * {
+    background-color: transparent; /* bare icons inside the shared pill */
+    color: #ffffff;
+}
+
+/* Workspaces — no island box; active dot in a round mauve pill
+   (kept from the flat config: how they looked right after switching back to dots) */
+#workspaces {
+    background-color: transparent;
+    padding: 0 4px;
+    margin: 4px 3px;
+}
+#workspaces button {
+    color: #6c7086; /* overlay0 — inactive dots */
+    padding: 0 6px;
+    margin: 2px 2px;
+    border-radius: 999px;
+    background: transparent;
+}
+#workspaces button.active {
+    color: #1e1e2e;
+    background-color: #cba6f7; /* mauve pill */
+    padding: 0 8px;
+}
+#workspaces button.urgent {
+    color: #1e1e2e;
+    background-color: #f38ba8; /* red */
+}
+#workspaces button:hover {
+    color: #cdd6f4;
+    background-color: #313244; /* surface0 */
+}
+
+/* All module text/icons white; gray when off/inactive */
+#window,
+#custom-window,
+#clock,
+#idle_inhibitor,
+#pulseaudio,
+#custom-mic,
+#bluetooth,
+#network,
+#custom-inputlang,
+#custom-power,
+#battery,
+#custom-tray-handle,
+#tray {
+    color: #ffffff;
+}
+
+/* "Off" states → gray */
+#idle_inhibitor.deactivated { color: #6c7086; } /* caffeine off */
+#bluetooth.disabled,
+#bluetooth.off              { color: #6c7086; } /* bluetooth off */
+#network.disconnected,
+#network.disabled           { color: #6c7086; } /* wifi off */
+#pulseaudio.muted { color: #6c7086; } /* speaker muted */
+#custom-mic.muted { color: #6c7086; } /* mic muted */
+#battery.warning            { color: #fab387; } /* keep legible */
+#battery.critical           { color: #f38ba8; }
+
+/* Tray drawer: on hover the three-dots handle collapses to nothing so the
+   revealed appindicators appear to take its place. The revealed tray keeps
+   the group hovered, so the handle stays hidden until the pointer leaves. */
+#custom-tray-handle {
+    transition: all 250ms ease;
+}
+#systray:hover #custom-tray-handle,
+.group:hover #custom-tray-handle {
+    opacity: 0;
+    font-size: 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+}
+
+tooltip {
+    background-color: #181825; /* mantle */
+    border: 1px solid #cba6f7; /* mauve */
+    border-radius: 8px;
+}
+tooltip label {
+    color: #cdd6f4;
+}
