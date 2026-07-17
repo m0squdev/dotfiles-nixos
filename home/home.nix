@@ -47,8 +47,9 @@
     # fcitx5-configtool won't persist — edit ../config/fcitx5/profile instead.
     "fcitx5" = { source = ../config/fcitx5; recursive = true; };
 
-    # XDG autostart entries
-    "autostart" = { source = ../config/autostart; recursive = true; };
+    # NOTE: vesktop autostart intentionally NOT managed here — niri already
+    # launches it via spawn-at-startup (start-after-tray.sh, minimized). A
+    # second XDG-autostart copy just raced and crash-looped, so it was dropped.
 
     # GTK 3 (adw-gtk3 follows the Catppuccin theme)
     "gtk-3.0/settings.ini".source = ../config/gtk-3.0/settings.ini;
