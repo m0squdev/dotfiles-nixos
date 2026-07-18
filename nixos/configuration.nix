@@ -220,6 +220,7 @@ in
     stremio-linux-shell   # Stremio media center (native GTK/webkit shell; old qt5 `stremio` was removed from nixpkgs 2026-02)
     geary
     obsidian        # Markdown knowledge base / notes
+    libreoffice     # office suite (GTK build, follows the Catppuccin GTK theme)
 
     # --- niri desktop helpers ---
     waybar          # status bar

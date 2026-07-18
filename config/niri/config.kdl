@@ -408,6 +408,7 @@ window-rule {
     match app-id=r#"^vesktop$"#
     match app-id=r#"^com\.stremio\.Stremio$"#
     match app-id=r#"^obsidian$"#
+    match app-id=r#"^libreoffice"#
     open-maximized true
 }
 
