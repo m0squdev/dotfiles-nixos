@@ -52,7 +52,7 @@ dotfiles-nixos/
 ├── local/
 │   └── share/gtksourceview-5/styles/catppuccin-mocha.xml   # → ~/.local/share/...
 └── assets/
-    └── wallpapers/wall.jpg     # → ~/Pictures/Wallpapers/wall.jpg
+    └── wallpapers/wall.jpg     # → ~/.local/share/backgrounds/wall.jpg
 ```
 
 ---
@@ -84,7 +84,7 @@ can place them by hand if you *don't* use the flake.
 | `config/gtk-4.0/{settings.ini,gtk.css,gtk-dark.css}` | `~/.config/gtk-4.0/` | Home Manager |
 | `config/kdeglobals` | `~/.config/kdeglobals` | Home Manager |
 | `local/share/gtksourceview-5/styles/catppuccin-mocha.xml` | `~/.local/share/gtksourceview-5/styles/` | Home Manager |
-| `assets/wallpapers/wall.jpg` | `~/Pictures/Wallpapers/wall.jpg` | Home Manager |
+| `assets/wallpapers/wall.jpg` | `~/.local/share/backgrounds/wall.jpg` | Home Manager |
 | *(generated symlink)* | `~/.config/gtk-4.0/assets` → `/run/current-system/sw/share/themes/catppuccin-mocha-mauve-standard+normal/gtk-4.0/assets` | Home Manager |
 
 ---

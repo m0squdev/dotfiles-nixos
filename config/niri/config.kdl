@@ -329,9 +329,9 @@ spawn-at-startup "/home/valer/.config/niri/start-after-tray.sh" "vesktop" "--sta
 // Requires `programs.kdeconnect.enable = true;` in /etc/nixos/configuration.nix.
 spawn-at-startup "/home/valer/.config/niri/start-after-tray.sh" "kdeconnect-indicator"
 
-// Set the wallpaper with swaybg. If ~/Pictures/Wallpapers/wall.jpg is ever
+// Set the wallpaper with swaybg. If ~/.local/share/backgrounds/wall.jpg is ever
 // missing, it falls back to a solid Catppuccin Mocha base colour.
-spawn-sh-at-startup "swaybg -m fill -i ~/Pictures/Wallpapers/wall.jpg || swaybg -c 1e1e2e"
+spawn-sh-at-startup "swaybg -m fill -i ~/.local/share/backgrounds/wall.jpg || swaybg -c 1e1e2e"
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"

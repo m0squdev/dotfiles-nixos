@@ -75,7 +75,7 @@
     ../local/share/gtksourceview-5/styles/catppuccin-mocha.xml;
 
   # ---------------------------------------------------------------------------
-  # Wallpaper — referenced by niri (swaybg) and hyprlock at ~/Pictures/Wallpapers/wall.jpg
+  # Wallpaper — referenced by niri (swaybg) and hyprlock at ~/.local/share/backgrounds/wall.jpg
   # ---------------------------------------------------------------------------
-  home.file."Pictures/Wallpapers/wall.jpg".source = ../assets/wallpapers/wall.jpg;
+  home.file.".local/share/backgrounds/wall.jpg".source = ../assets/wallpapers/wall.jpg;
 }
