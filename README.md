@@ -8,7 +8,7 @@ One command rebuilds the operating system and lays down all the user configs at
 once, and it rolls back as a unit if anything goes wrong.
 
 ```
-sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
+sudo nixos-rebuild switch --flake <path-to-repo>#<hostname>
 ```
 
 ---
@@ -122,7 +122,7 @@ can place them by hand if you *don't* use the flake.
 
 4. **Build it** (git must have the files tracked; `git add -A` first if you edited):
    ```
-   sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
+   sudo nixos-rebuild switch --flake <path-to-repo>#<hostname>
    ```
    Existing dotfiles it wants to manage are backed up as `*.hm-bak`.
 
