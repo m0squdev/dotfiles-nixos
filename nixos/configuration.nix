@@ -219,6 +219,7 @@ in
     vesktop
     stremio-linux-shell   # Stremio media center (native GTK/webkit shell; old qt5 `stremio` was removed from nixpkgs 2026-02)
     geary
+    obsidian        # Markdown knowledge base / notes
 
     # --- niri desktop helpers ---
     waybar          # status bar
