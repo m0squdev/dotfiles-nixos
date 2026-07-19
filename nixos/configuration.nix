@@ -238,6 +238,7 @@ in
     geary
     obsidian        # Markdown knowledge base / notes
     libreoffice     # office suite (GTK build, follows the Catppuccin GTK theme)
+    alacritty       # terminal (Mod+T); Catppuccin Mocha config in ~/.config/alacritty
 
     # --- niri desktop helpers ---
     waybar          # status bar

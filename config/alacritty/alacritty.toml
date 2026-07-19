@@ -1,0 +1,97 @@
+# Alacritty — Catppuccin Mocha (mauve accent, to match the rest of the desktop).
+#
+# Self-contained on purpose: Home Manager symlinks each file in this dir
+# individually into the Nix store, so a relative `import` of a separate theme
+# file would NOT resolve (the two files land in different store paths). Keeping
+# the full palette inline sidesteps that entirely.
+#
+# Edit here in the repo, then `nixos-rebuild switch` — the live copy at
+# ~/.config/alacritty/alacritty.toml is a read-only store symlink. Alacritty
+# hot-reloads on save, but only the store file changes on rebuild.
+
+[window]
+padding = { x = 10, y = 10 }
+dynamic_padding = false
+opacity = 0.92           # slight transparency; 1.0 = opaque, lower toward 0.0
+
+[font]
+size = 11
+normal = { family = "JetBrainsMono Nerd Font", style = "Regular" }
+bold   = { family = "JetBrainsMono Nerd Font", style = "Bold" }
+italic = { family = "JetBrainsMono Nerd Font", style = "Italic" }
+
+# ============================================================================
+# Catppuccin Mocha  —  https://github.com/catppuccin/alacritty
+# Palette verbatim from the official theme, except the cursor, vi-mode cursor,
+# and selection all use Text (#cdd6f4) — the palette's near-white foreground —
+# by preference. The official values (Rosewater #f5e0dc / Lavender #b4befe) are
+# noted inline if you want them back.
+# ============================================================================
+
+[colors.primary]
+background        = "#1e1e2e"   # Base
+foreground        = "#cdd6f4"   # Text
+dim_foreground    = "#7f849c"   # Overlay1
+bright_foreground = "#cdd6f4"   # Text
+
+[colors.cursor]
+text   = "#1e1e2e"   # Base
+cursor = "#cdd6f4"   # Text (official: Rosewater #f5e0dc)
+
+[colors.vi_mode_cursor]
+text   = "#1e1e2e"   # Base
+cursor = "#cdd6f4"   # Text (official: Lavender #b4befe)
+
+[colors.search.matches]
+foreground = "#1e1e2e"   # Base
+background = "#a6adc8"    # Subtext0
+
+[colors.search.focused_match]
+foreground = "#1e1e2e"   # Base
+background = "#a6e3a1"    # Green
+
+[colors.footer_bar]
+foreground = "#1e1e2e"   # Base
+background = "#a6adc8"    # Subtext0
+
+[colors.hints.start]
+foreground = "#1e1e2e"   # Base
+background = "#f9e2af"    # Yellow
+
+[colors.hints.end]
+foreground = "#1e1e2e"   # Base
+background = "#a6adc8"    # Subtext0
+
+[colors.selection]
+text       = "#1e1e2e"   # Base
+background = "#cdd6f4"    # Text (official: Rosewater #f5e0dc)
+
+[colors.normal]
+black   = "#45475a"   # Surface1
+red     = "#f38ba8"   # Red
+green   = "#a6e3a1"   # Green
+yellow  = "#f9e2af"   # Yellow
+blue    = "#89b4fa"   # Blue
+magenta = "#f5c2e7"   # Pink
+cyan    = "#94e2d5"   # Teal
+white   = "#bac2de"   # Subtext1
+
+[colors.bright]
+black   = "#585b70"   # Surface2
+red     = "#f38ba8"   # Red
+green   = "#a6e3a1"   # Green
+yellow  = "#f9e2af"   # Yellow
+blue    = "#89b4fa"   # Blue
+magenta = "#f5c2e7"   # Pink
+cyan    = "#94e2d5"   # Teal
+white   = "#a6adc8"   # Subtext0
+
+[colors.dim]
+black   = "#45475a"   # Surface1
+red     = "#f38ba8"   # Red
+green   = "#a6e3a1"   # Green
+yellow  = "#f9e2af"   # Yellow
+blue    = "#89b4fa"   # Blue
+magenta = "#f5c2e7"   # Pink
+cyan    = "#94e2d5"   # Teal
+white   = "#bac2de"   # Subtext1

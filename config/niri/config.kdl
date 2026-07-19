@@ -438,7 +438,7 @@ binds {
     Mod+Shift+Slash { show-hotkey-overlay; }
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
-    Mod+T hotkey-overlay-title="Open a Terminal: GNOME Console" { spawn "kgx"; }
+    Mod+T hotkey-overlay-title="Open a Terminal: Alacritty" { spawn "alacritty"; }
     Mod+Space hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
     Mod+L hotkey-overlay-title="Lock the Screen: hyprlock" { spawn "/home/valer/.config/niri/lock.sh"; }
     Mod+N hotkey-overlay-title="Quick Settings: swaync" { spawn "swaync-client" "-t" "-sw"; }

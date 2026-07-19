@@ -35,6 +35,9 @@
     # Application launcher
     "fuzzel" = { source = ../config/fuzzel; recursive = true; };
 
+    # Terminal (Mod+T) — Catppuccin Mocha, JetBrainsMono Nerd Font
+    "alacritty" = { source = ../config/alacritty; recursive = true; };
+
     # GNOME Console (kgx) Catppuccin-Mocha livery toolkit (patch + generator)
     "kgx-mocha" = { source = ../config/kgx-mocha; recursive = true; };
 
