@@ -440,6 +440,9 @@ binds {
     // Suggested binds for running programs: terminal, app launcher, screen locker.
     Mod+T hotkey-overlay-title="Open a Terminal: Alacritty" { spawn "alacritty"; }
     Mod+Space hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
+    // Same launcher, but folds in each app's desktop actions (New Window, New Private
+    // Window, Profile Manager, ...) as extra rows — a jump-list on demand.
+    Mod+Shift+Space hotkey-overlay-title="Run an Application (+ actions): fuzzel" { spawn "fuzzel" "--show-actions"; }
     Mod+L hotkey-overlay-title="Lock the Screen: hyprlock" { spawn "/home/valer/.config/niri/lock.sh"; }
     Mod+N hotkey-overlay-title="Quick Settings: swaync" { spawn "swaync-client" "-t" "-sw"; }
     Mod+Z hotkey-overlay-title="Open the Browser: Zen" { spawn "zen-beta"; }
