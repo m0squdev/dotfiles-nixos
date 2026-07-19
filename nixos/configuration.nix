@@ -256,6 +256,8 @@ in
     sound-theme-freedesktop
     cliphist        # clipboard history store (Mod+V picker via fuzzel)
     wl-clipboard    # wl-copy / wl-paste — used by cliphist + the picker script
+    rofimoji        # emoji / character picker (Mod+. via fuzzel -> emoji-menu.sh)
+    wtype           # synthetic typing on Wayland — rofimoji types the picked glyph
 
     # --- Catppuccin Mocha theming ---
     (catppuccin-gtk.override {
