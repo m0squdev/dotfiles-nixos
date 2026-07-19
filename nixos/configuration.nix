@@ -246,7 +246,7 @@ in
     # Screen lockers. hyprlock is the primary (minimal Catppuccin Mocha lock screen,
     # config in ~/.config/hypr/). swaylock-effects is kept as a fallback that
     # `lock.sh` falls back to if hyprlock is ever unavailable.
-    hyprlock                  # primary lock screen (Super+Alt+L)
+    hyprlock                  # primary lock screen (Mod+L)
     swaylock-effects          # fallback locker (swaylock fork; binary is `swaylock`)
     swayidle
     playerctl       # media keys
@@ -254,6 +254,8 @@ in
     swaynotificationcenter  # notifications + quick-settings panel (swaync)
     swayosd
     sound-theme-freedesktop
+    cliphist        # clipboard history store (Mod+V picker via fuzzel)
+    wl-clipboard    # wl-copy / wl-paste — used by cliphist + the picker script
 
     # --- Catppuccin Mocha theming ---
     (catppuccin-gtk.override {

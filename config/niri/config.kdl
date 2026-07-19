@@ -319,6 +319,10 @@ spawn-at-startup "fcitx5" "-d" "--replace"
 // suspend at 15 min. Paused while waybar's caffeine toggle is on.
 spawn-at-startup "/home/valer/.config/niri/idle.sh"
 
+// Clipboard history: record every copy into cliphist's store. Mod+V opens the
+// picker (cliphist-menu.sh -> fuzzel). Needs the cliphist + wl-clipboard packages.
+spawn-at-startup "wl-paste" "--watch" "cliphist" "store"
+
 // Vesktop (Discord), launched minimized to the system tray. Wrapped so it waits
 // for waybar's tray watcher first — otherwise it loses its tray icon to a login
 // race and ends up minimized with no window and no icon (unreachable).
@@ -436,7 +440,7 @@ binds {
     // Suggested binds for running programs: terminal, app launcher, screen locker.
     Mod+T hotkey-overlay-title="Open a Terminal: GNOME Console" { spawn "kgx"; }
     Mod+Space hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
-    Super+Alt+L hotkey-overlay-title="Lock the Screen: hyprlock" { spawn "/home/valer/.config/niri/lock.sh"; }
+    Mod+L hotkey-overlay-title="Lock the Screen: hyprlock" { spawn "/home/valer/.config/niri/lock.sh"; }
     Mod+N hotkey-overlay-title="Quick Settings: swaync" { spawn "swaync-client" "-t" "-sw"; }
     Mod+Z hotkey-overlay-title="Open the Browser: Zen" { spawn "zen-beta"; }
 
@@ -493,10 +497,8 @@ binds {
     Mod+D     { focus-column-right; }
     Mod+W     { focus-window-or-workspace-up; }
     Mod+S     { focus-window-or-workspace-down; }
-    // Vim-style extras: H/L through apps, J through stacked windows (K is the layout switcher).
-    Mod+H     { focus-column-left; }
-    Mod+J     { focus-window-down; }
-    Mod+L     { focus-column-right; }
+    // No vim H/J/L focus aliases — they were exact duplicates of Mod+WASD above.
+    // Mod+K stays as the input-method switcher (cycle-input, below); Mod+L locks the screen.
 
     Mod+Ctrl+Left  { move-column-left; }
     Mod+Ctrl+Down  { move-window-down; }
@@ -680,8 +682,13 @@ binds {
     Mod+Shift+Minus { set-window-height "-10%"; }
     Mod+Shift+Equal { set-window-height "+10%"; }
 
+    // Clipboard history picker: cliphist store -> fuzzel (dmenu) -> wl-copy.
+    // Needs the wl-paste --watch daemon (spawn-at-startup above) + cliphist/wl-clipboard.
+    Mod+V { spawn "/home/valer/.config/niri/cliphist-menu.sh"; }
+
     // Move the focused window between the floating and the tiling layout.
-    Mod+V       { toggle-window-floating; }
+    // (toggle-window-floating moved off Mod+V, which now opens the clipboard.)
+    Mod+Alt+F   { toggle-window-floating; }
     Mod+Shift+V { switch-focus-between-floating-and-tiling; }
 
     // Toggle tabbed column display mode.
