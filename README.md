@@ -13,6 +13,16 @@ sudo nixos-rebuild switch --flake <path-to-repo>#<hostname>
 
 ---
 
+## Screenshots
+
+![The niri desktop, themed Catppuccin Mocha](assets/screenshots/desktop.png)
+
+*niri's scrollable tiling with Waybar on top — zen browser on the left, and a stacked
+pair of terminals on the right (fastfetch and `nixos/configuration.nix` in vim). The
+whole desktop is themed **Catppuccin Mocha** with a mauve accent.*
+
+---
+
 ## What's in the build
 
 | Piece | Software |
@@ -22,6 +32,7 @@ sudo nixos-rebuild switch --flake <path-to-repo>#<hostname>
 | Notifications & quick settings | **swaync** |
 | On-screen display (volume/brightness) | **swayosd** |
 | Launcher | **fuzzel** |
+| Emoji / character picker | **rofimoji** (`Mod+.`, via fuzzel) |
 | Lock screen | **hyprlock** (primary) · **swaylock-effects** (fallback) |
 | Terminal | **GNOME Console (kgx)**, patched to a Catppuccin Mocha palette |
 | GTK theme | **catppuccin-gtk** (mauve) · adw-gtk3 · Papirus-Dark icons · Catppuccin cursors |
@@ -52,7 +63,8 @@ dotfiles-nixos/
 ├── local/
 │   └── share/gtksourceview-5/styles/catppuccin-mocha.xml   # → ~/.local/share/...
 └── assets/
-    └── wallpapers/wall.jpg     # → ~/.local/share/backgrounds/wall.jpg
+    ├── wallpapers/wall.jpg     # → ~/.local/share/backgrounds/wall.jpg
+    └── screenshots/            # images used in this README
 ```
 
 ---
