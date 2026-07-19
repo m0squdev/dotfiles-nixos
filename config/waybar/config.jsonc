@@ -104,7 +104,11 @@
         "format": "{}",
         "max-length": 60,
         "escape": true,
-        "tooltip": false
+        "tooltip": false,
+        // Left-click the title = jump-list: a fuzzel menu of the focused app's
+        // desktop actions (New Window, New Private Window, ...). See
+        // scripts/window-actions.sh.
+        "on-click": "/home/valer/.config/waybar/scripts/window-actions.sh"
     },
 
     "clock": {

@@ -443,6 +443,9 @@ binds {
     // Same launcher, but folds in each app's desktop actions (New Window, New Private
     // Window, Profile Manager, ...) as extra rows — a jump-list on demand.
     Mod+Shift+Space hotkey-overlay-title="Run an Application (+ actions): fuzzel" { spawn "fuzzel" "--show-actions"; }
+    // Jump-list for the FOCUSED window: a fuzzel menu of just that app's desktop
+    // actions (same script the window title's left-click uses).
+    Mod+Alt+Space hotkey-overlay-title="Focused App Actions: fuzzel" { spawn "/home/valer/.config/waybar/scripts/window-actions.sh"; }
     Mod+L hotkey-overlay-title="Lock the Screen: hyprlock" { spawn "/home/valer/.config/niri/lock.sh"; }
     Mod+N hotkey-overlay-title="Quick Settings: swaync" { spawn "swaync-client" "-t" "-sw"; }
     Mod+Z hotkey-overlay-title="Open the Browser: Zen" { spawn "zen-beta"; }
