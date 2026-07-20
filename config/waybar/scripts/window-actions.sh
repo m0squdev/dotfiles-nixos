@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Waybar: right-click the window title (custom/window's on-click-right) to open a
-# fuzzel menu of the FOCUSED app's desktop actions — the "jump-list" entries you'd
-# get from right-clicking its icon on a dock (New Window, New Private Window, ...).
+# Waybar: left-click the window title (custom/window's on-click) to open a fuzzel
+# menu of the FOCUSED app's desktop actions — the "jump-list" entries you'd get
+# from right-clicking its icon on a dock (New Window, New Private Window, ...).
+# When NO window is focused, it toggles niri's Overview instead (see below).
 #
 # Flow: focused app_id (niri IPC, same plain-text parse as window-title.sh)
 #   -> its .desktop file (searched across the XDG data dirs)
@@ -17,8 +18,10 @@ menu() { fuzzel --dmenu "$@"; }   # Catppuccin Mocha look comes from fuzzel.ini
 app_id=$(niri msg focused-window 2>/dev/null \
     | sed -n 's/^  App ID: "\(.*\)"$/\1/p' | head -n1)
 
+# Nothing focused → no app to build a jump-list for. Toggle niri's Overview
+# (exposé of all windows/workspaces) instead of popping an empty menu.
 if [ -z "$app_id" ]; then
-    printf '%s\n' "(no window focused)" | menu --prompt "Actions > " --lines 1 --width 34 >/dev/null
+    niri msg action toggle-overview >/dev/null 2>&1
     exit 0
 fi
 

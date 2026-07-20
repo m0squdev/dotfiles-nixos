@@ -112,7 +112,7 @@
     },
 
     "clock": {
-        "format": " {:%H:%M}",
+        "format": "{:%H:%M}",
         "tooltip": false,
         "on-click": "swaync-client -t -sw"
     },
