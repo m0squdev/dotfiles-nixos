@@ -28,8 +28,9 @@
       nixosConfigurations.valerios-nix = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
-          # The whole system config, copied verbatim from /etc/nixos.
-          ./nixos/configuration.nix
+          # This host's composition root: imports the feature modules under
+          # ./modules and declares what's unique to this machine.
+          ./hosts/valerios-nix/configuration.nix
 
           # Home Manager as a NixOS module, so ONE `nixos-rebuild switch`
           # rebuilds the system AND lays down every dotfile.

@@ -48,14 +48,22 @@ whole desktop is themed **Catppuccin Mocha** with a mauve accent.*
 
 ```
 dotfiles-nixos/
-├── flake.nix                  # entry point: system + Home Manager, pinned nixpkgs
+├── flake.nix                  # entry point: defines each host, pinned nixpkgs
 ├── flake.lock                 # exact input versions (reproducibility)
-├── nixos/
-│   ├── configuration.nix       # the system config (verbatim from /etc/nixos)
-│   ├── hardware-configuration.nix   # ⚠ machine-specific: REGENERATE on other machines
-│   └── kgx-catppuccin-mocha.patch   # applied to gnome-console by an overlay
+├── CONTRIBUTING.md            # repo layout + the "one line vs own module" rule
+├── hosts/
+│   └── valerios-nix/
+│       ├── configuration.nix          # composition root: imports modules + host-only settings
+│       └── hardware-configuration.nix # ⚠ machine-specific: REGENERATE on other machines
+├── modules/
+│   ├── core/                  # boot, nix, locale, networking, users, audio, graphics
+│   ├── desktop/               # niri, gnome, fonts, input-method, theming (+ kgx patch)
+│   ├── hardware/nvidia.nix    # GPU quirks (imported only where relevant)
+│   └── apps/                  # zen.nix, syncthing.nix, misc.nix (the one-line apps)
 ├── home/
-│   └── home.nix                # Home Manager: which dotfile goes where
+│   ├── home.nix               # Home Manager entry point (imports the two below)
+│   ├── dotfiles.nix           # the bulk of ~/.config/* symlinks
+│   └── gtk.nix                # GTK 4 theming (the one entry needing real logic)
 ├── config/                     # → ~/.config/*
 │   ├── niri/  waybar/  swaync/  swayosd/  swaylock/  hypr/  fuzzel/
 │   ├── kgx-mocha/  Kvantum/  qt6ct/  fcitx5/  autostart/
@@ -77,9 +85,10 @@ can place them by hand if you *don't* use the flake.
 
 | In this repo | Ends up at | Placed by |
 |---|---|---|
-| `nixos/configuration.nix` | *(read directly by the flake)*, replaces `/etc/nixos/configuration.nix` | flake |
-| `nixos/hardware-configuration.nix` | *(read by the flake)*, **regenerate per machine** | flake |
-| `nixos/kgx-catppuccin-mocha.patch` | applied to `gnome-console` via overlay | `configuration.nix` |
+| `hosts/<host>/configuration.nix` | *(read directly by the flake)*, replaces `/etc/nixos/configuration.nix` | flake |
+| `hosts/<host>/hardware-configuration.nix` | *(read by the flake)*, **regenerate per machine** | flake |
+| `modules/**/*.nix` | *(imported by the host's `configuration.nix`)* | flake |
+| `modules/desktop/kgx-catppuccin-mocha.patch` | applied to `gnome-console` via overlay | `modules/desktop/theming.nix` |
 | `config/niri/` | `~/.config/niri/` | Home Manager |
 | `config/waybar/` | `~/.config/waybar/` | Home Manager |
 | `config/swaync/` | `~/.config/swaync/` | Home Manager |
@@ -118,7 +127,7 @@ can place them by hand if you *don't* use the flake.
    and won't match yours):
    ```
    sudo nixos-generate-config --show-hardware-config \
-     > ~/PWUE/dotfiles-nixos/nixos/hardware-configuration.nix
+     > ~/PWUE/dotfiles-nixos/hosts/valerios-nix/hardware-configuration.nix
    ```
 
 3. **Make it yours.** Search-and-replace where needed:
@@ -126,9 +135,10 @@ can place them by hand if you *don't* use the flake.
      hardcoded `/home/valer/...` paths inside `config/niri/` and `config/waybar/`
      (niri's `spawn` can't expand `~`, so those paths are absolute).
    - **Hostname**: `valerios-nix` → yours, in `flake.nix`
-     (`nixosConfigurations.<host>`) and `nixos/configuration.nix`
-     (`networking.hostName`).
-   - **Timezone / locale**: `Europe/Rome`, `en_GB.UTF-8` in `configuration.nix`.
+     (`nixosConfigurations.<host>` *and* the `./hosts/valerios-nix/configuration.nix`
+     path), the `hosts/valerios-nix/` directory name, and
+     `hosts/valerios-nix/configuration.nix` (`networking.hostName`).
+   - **Timezone / locale**: `Europe/Rome`, `en_GB.UTF-8` in `modules/core/locale.nix`.
    - Swap `assets/wallpapers/wall.jpg` for your own if you like (niri falls back
      to a solid Catppuccin base colour if it's missing).
 
