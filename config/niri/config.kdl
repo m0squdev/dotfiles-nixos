@@ -742,3 +742,37 @@ binds {
     // works without a password for the user session under logind.
     Mod+Delete hotkey-overlay-title="Power Off the Machine" { spawn "systemctl" "poweroff"; }
 }
+
+// Waking from S3 suspend left the monitors permanently black. The machine
+// itself resumed fine — network came back, the session stayed alive — but
+// nvidia-drm rejected niri's first atomic commit on wake:
+//   [nvidia-drm] Failed to initialize semaphore for plane fence
+//   [nvidia-drm] Failed to apply atomic modeset.  Error code: -11
+// so the outputs never lit up again and the only way out was a hard reboot.
+//
+// Root cause: nvidia-drm refuses any atomic commit that carries an IN_FENCE_FD
+// on a plane, because desktop GeForce reports no syncpt support — see
+// NVIDIA/open-gpu-kernel-modules#622. "Semaphore for plane fence" IS that code
+// path. This is why the same card resumes fine under KDE: KWin detects NVIDIA
+// and stops using IN_FENCE_FD. niri has no such automatic detection, so it
+// keeps attaching in-fences and every post-resume commit is rejected.
+// Upstream tracks the niri side as niri#2236 with these identical two errors.
+//
+// wait-for-frame-completion-before-queueing is the equivalent of KWin's
+// workaround: niri waits for a frame to finish rendering before handing it to
+// DRM, so there is no in-fence to attach and nothing for the driver to reject.
+// This is the option that actually matters here.
+//
+// force-disable-connectors-on-resume (niri 26.04+) forces a fresh full modeset
+// on wake rather than resuming onto pre-suspend display state. Kept because
+// it's the recommended NVIDIA resume hygiene, but note it did NOT fix this on
+// its own — it was tried alone first and the commit still got rejected.
+//
+// Don't "fix" this by switching the NVIDIA module. modules/hardware/nvidia.nix
+// stays on the proprietary module with powerManagement on, deliberately: the
+// suspend/resume services both complete fine, and the open module has its own
+// separate resume bug on this driver (open-gpu-kernel-modules#1136).
+debug {
+    wait-for-frame-completion-before-queueing
+    force-disable-connectors-on-resume
+}
