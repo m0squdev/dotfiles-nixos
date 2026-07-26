@@ -18,6 +18,7 @@
     vesktop
     stremio-linux-shell   # Stremio media center (native GTK/webkit shell; old qt5 `stremio` was removed from nixpkgs 2026-02)
     geary                 # email client
+    fragments             # GNOME BitTorrent client (GTK/libadwaita, follows the Catppuccin GTK theme)
     obsidian              # Markdown knowledge base / notes
     libreoffice           # office suite (GTK build, follows the Catppuccin GTK theme)
     alacritty             # terminal (Mod+T); Catppuccin Mocha config via Home Manager
