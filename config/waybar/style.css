@@ -106,7 +106,9 @@ window#waybar {
 #idle_inhibitor.deactivated { color: #6c7086; } /* caffeine off */
 #bluetooth.disabled,
 #bluetooth.off              { color: #6c7086; } /* bluetooth off */
-#network.disconnected,
+/* Wi-Fi: the 󰖪 glyph covers both "not connected" and "radio off", so color is
+   what separates them — white while the radio is still on (.disconnected /
+   .linked), gray only once it's actually switched off (.disabled). */
 #network.disabled           { color: #6c7086; } /* wifi off */
 #pulseaudio.muted { color: #6c7086; } /* speaker muted */
 #custom-mic.muted { color: #6c7086; } /* mic muted */

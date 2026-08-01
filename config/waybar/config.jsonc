@@ -48,6 +48,12 @@
         "on-click-right": "/home/valer/.config/waybar/scripts/bt-menu.sh"
     },
 
+    // Same 󰖪 glyph for both "not connected" and "radio off" — they're told apart
+    // by color instead, in style.css (#network.disconnected is white, .disabled
+    // is gray). The disabled state comes from Waybar's own rfkill watch
+    // ("rfkill": true is the default), and `toggles.sh wifi toggle` runs
+    // `nmcli radio wifi off`, which soft-blocks rfkill — so no helper script is
+    // needed to tell the two apart.
     "network": {
         "format-wifi": "󰖩",
         "format-ethernet": "󰈀",
@@ -56,7 +62,8 @@
         "format-disabled": "󰖪",
         "tooltip-format-wifi": "{essid}  ·  {signalStrength}%\n{ipaddr}",
         "tooltip-format-ethernet": "{ifname}  ·  {ipaddr}",
-        "tooltip-format-disconnected": "Disconnected",
+        "tooltip-format-disconnected": "Not connected",
+        "tooltip-format-disabled": "Wi-Fi off",
         "on-click": "/home/valer/.config/swaync/toggles.sh wifi toggle",
         "on-click-right": "/home/valer/.config/waybar/scripts/wifi-menu.sh"
     },
