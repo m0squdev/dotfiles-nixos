@@ -11,7 +11,7 @@
     "idle_inhibitor": {
         "format": "{icon}",
         "format-icons": { "activated": "󰅶", "deactivated": "󰅶" },
-        "tooltip-format-activated": "Caffeine on  ·  screen stays awake",
+        "tooltip-format-activated": "Caffeine  ·  on",
         "tooltip-format-deactivated": "Caffeine  ·  off"
     },
 
