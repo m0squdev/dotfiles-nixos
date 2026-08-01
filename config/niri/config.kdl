@@ -333,6 +333,13 @@ spawn-at-startup "/home/valer/.config/niri/start-after-tray.sh" "vesktop" "--sta
 // Requires `programs.kdeconnect.enable = true;` in /etc/nixos/configuration.nix.
 spawn-at-startup "/home/valer/.config/niri/start-after-tray.sh" "kdeconnect-indicator"
 
+// Bluetooth pairing agent. niri has none built in, and gnome-shell — which
+// normally supplies it — never runs in this session. Without an agent BlueZ
+// cannot answer a headset's re-authentication request on reconnect, so it drops
+// the link key and the device only ever works for the session it was first
+// paired in. See modules/core/bluetooth.nix. Same tray-race wrapper as above.
+spawn-at-startup "/home/valer/.config/niri/start-after-tray.sh" "blueman-applet"
+
 // Set the wallpaper with swaybg. If ~/.local/share/backgrounds/wall.jpg is ever
 // missing, it falls back to a solid Catppuccin Mocha base colour.
 spawn-sh-at-startup "swaybg -m fill -i ~/.local/share/backgrounds/wall.jpg || swaybg -c 1e1e2e"

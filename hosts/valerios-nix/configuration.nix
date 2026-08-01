@@ -20,6 +20,7 @@
     ../../modules/core/networking.nix
     ../../modules/core/users.nix
     ../../modules/core/audio.nix
+    ../../modules/core/bluetooth.nix
     ../../modules/core/graphics.nix
 
     # --- Desktop (niri + GNOME session, theming, fonts, input method) ---
