@@ -41,7 +41,7 @@
         "format": "󰂯",
         "format-off": "󰂲",
         "format-disabled": "󰂲",
-        "format-connected": "󰂱 {num_connections}",
+        "format-connected": "󰂱",
         "tooltip-format": "{controller_alias}  ·  {status}",
         "tooltip-format-connected": "{controller_alias}  ·  {num_connections} connected\n{device_enumerate}",
         // One line per connected device. The -battery variant is used for

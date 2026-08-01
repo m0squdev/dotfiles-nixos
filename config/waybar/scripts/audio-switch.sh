@@ -21,11 +21,16 @@ mapfile -t entries < <(wpctl status | awk -v want="$kind" '
   /Source endpoints:/ {sec=0; next}
   /Filters:/||/Streams:/||/Devices:/ {sec=0; next}
   sec && /[0-9]+\./ {
+    # wpctl marks the current default with a "*" ahead of the id. Grab that
+    # before it gets stripped, so the picker can flag it the same way the
+    # Bluetooth and Wi-Fi menus do: ●  selected, blank otherwise.
+    prefix=$0; sub(/[0-9].*$/,"",prefix)
+    mark=(index(prefix,"*")>0) ? "●  " : "   "
     line=$0; sub(/^[^0-9]*/,"",line)
     id=line;   sub(/\..*/,"",id)
     name=line; sub(/^[0-9]+\.[[:space:]]*/,"",name); sub(/[[:space:]]*\[vol:.*$/,"",name)
     gsub(/^[[:space:]]+|[[:space:]]+$/,"",name)
-    if (name!="") print id "\t" name
+    if (name!="") print id "\t" mark name
   }')
 
 [ ${#entries[@]} -eq 0 ] && exit 0
