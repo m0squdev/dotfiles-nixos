@@ -11,8 +11,8 @@
     "idle_inhibitor": {
         "format": "{icon}",
         "format-icons": { "activated": "󰅶", "deactivated": "󰅶" },
-        "tooltip-format-activated": "Caffeine on — screen stays awake",
-        "tooltip-format-deactivated": "Caffeine off"
+        "tooltip-format-activated": "Caffeine on  ·  screen stays awake",
+        "tooltip-format-deactivated": "Caffeine  ·  off"
     },
 
     "pulseaudio": {
@@ -22,7 +22,7 @@
         "scroll-step": 5,
         "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
         "on-click-right": "/home/valer/.config/waybar/scripts/audio-switch.sh sink",
-        "tooltip-format": "Volume {volume}%  ·  scroll to change, click to mute"
+        "tooltip-format": "{desc}  ·  {volume}%"
     },
 
     "custom/mic": {
@@ -43,7 +43,7 @@
         "format-disabled": "󰂲",
         "format-connected": "󰂱 {num_connections}",
         "tooltip-format": "{controller_alias}  ·  {status}",
-        "tooltip-format-connected": "{controller_alias}\n{num_connections} connected\n{device_enumerate}",
+        "tooltip-format-connected": "{controller_alias}  ·  {num_connections} connected\n{device_enumerate}",
         "on-click": "/home/valer/.config/swaync/toggles.sh bt toggle",
         "on-click-right": "/home/valer/.config/waybar/scripts/bt-menu.sh"
     },
@@ -62,8 +62,8 @@
         "format-disabled": "󰖪",
         "tooltip-format-wifi": "{essid}  ·  {signalStrength}%\n{ipaddr}",
         "tooltip-format-ethernet": "{ifname}  ·  {ipaddr}",
-        "tooltip-format-disconnected": "Not connected",
-        "tooltip-format-disabled": "Wi-Fi off",
+        "tooltip-format-disconnected": "Wi-Fi  ·  not connected",
+        "tooltip-format-disabled": "Wi-Fi  ·  off",
         "on-click": "/home/valer/.config/swaync/toggles.sh wifi toggle",
         "on-click-right": "/home/valer/.config/waybar/scripts/wifi-menu.sh"
     },
@@ -80,15 +80,25 @@
         "tooltip": false
     },
 
+    // One pill for both host types: 󰐥 on desktops, a battery glyph on laptops —
+    // so neither host shows an icon that means nothing to it. This replaces the
+    // old built-in "battery" module, which couldn't put the power profile in its
+    // tooltip (it only interpolates {capacity}/{time}/{power}).
+    // Left-click is the session menu on both; right-click is the power-mode
+    // picker, which no-ops when there's no battery. See scripts/power.sh.
+    // Signal 10 = repaint after a profile change (7/8/9 are already taken).
     "custom/power": {
-        "format": "󰐥",
-        "tooltip": false,
-        "on-click": "/home/valer/.config/waybar/scripts/powermenu.sh"
+        "exec": "/home/valer/.config/waybar/scripts/power.sh status",
+        "return-type": "json",
+        "interval": 30,
+        "signal": 10,
+        "on-click": "/home/valer/.config/waybar/scripts/powermenu.sh",
+        "on-click-right": "/home/valer/.config/waybar/scripts/power.sh mode-menu"
     },
 
     "modules-left": ["niri/workspaces", "custom/window", "group/systray"],
     "modules-center": ["clock"],
-    "modules-right": ["idle_inhibitor", "pulseaudio", "custom/mic", "bluetooth", "network", "custom/inputlang", "custom/power", "battery"],
+    "modules-right": ["idle_inhibitor", "pulseaudio", "custom/mic", "bluetooth", "network", "custom/inputlang", "custom/power"],
 
     "niri/workspaces": {
         "format": "{icon}",
@@ -122,15 +132,6 @@
         "format": "{:%H:%M}",
         "tooltip": false,
         "on-click": "swaync-client -t -sw"
-    },
-
-    "battery": {
-        "states": { "warning": 30, "critical": 15 },
-        "format": "{icon} {capacity}%",
-        "format-charging": " {capacity}%",
-        "format-plugged": " {capacity}%",
-        "format-icons": ["", "", "", "", ""],
-        "interval": 30
     },
 
     // The whole tray is ONE pill now (background on #tray container, see style.css).

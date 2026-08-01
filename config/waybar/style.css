@@ -24,7 +24,6 @@ window#waybar {
 #network,
 #custom-inputlang,
 #custom-power,
-#battery,
 #custom-notification,
 #custom-tray-handle {
     background-color: #1e1e2e; /* base */
@@ -96,7 +95,6 @@ window#waybar {
 #network,
 #custom-inputlang,
 #custom-power,
-#battery,
 #custom-tray-handle,
 #tray {
     color: #ffffff;
@@ -112,8 +110,11 @@ window#waybar {
 #network.disabled           { color: #6c7086; } /* wifi off */
 #pulseaudio.muted { color: #6c7086; } /* speaker muted */
 #custom-mic.muted { color: #6c7086; } /* mic muted */
-#battery.warning            { color: #fab387; } /* keep legible */
-#battery.critical           { color: #f38ba8; }
+/* Power pill: 󰐥 on desktops, battery glyph on laptops (one module — see
+   scripts/power.sh). White by default; only a genuinely low charge takes color,
+   and .charging stays white since the bolt already says it. */
+#custom-power.warning       { color: #fab387; } /* <=30% */
+#custom-power.critical      { color: #f38ba8; } /* <=15% */
 
 /* Tray drawer: on hover the three-dots handle collapses to nothing so the
    revealed appindicators appear to take its place. The revealed tray keeps
