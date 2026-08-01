@@ -121,8 +121,8 @@ cmd_status() {
   printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' "$glyph" "$tooltip" "$class"
 }
 
-# Active profile is flagged with a leading "* ", the others padded with two
-# spaces so the labels line up — same convention as wifi-menu.sh.
+# Active profile is flagged with a leading "●  ", the others padded to match so
+# the labels line up — same convention as bt-menu.sh and wifi-menu.sh.
 cmd_mode_menu() {
   # Laptops only: on a desktop the pill is a plain power button.
   read_battery >/dev/null || exit 0
@@ -130,7 +130,7 @@ cmd_mode_menu() {
   local current chosen
   current=$(powerprofilesctl get 2>/dev/null) || exit 0
 
-  row() { [ "$1" = "$current" ] && printf '* %s\n' "$2" || printf '  %s\n' "$2"; }
+  row() { [ "$1" = "$current" ] && printf '●  %s\n' "$2" || printf '   %s\n' "$2"; }
 
   chosen=$( { row power-saver "Battery saver"
               row balanced    "Balanced"
@@ -139,7 +139,8 @@ cmd_mode_menu() {
 
   [ -z "$chosen" ] && exit 0
 
-  case "$(printf '%s' "$chosen" | sed -E 's/^(\* |  )//')" in
+  # Strip the leading "●  " / "   " marker to recover the plain label.
+  case "$(printf '%s' "$chosen" | sed -E 's/^● +//; s/^ +//')" in
     "Battery saver") powerprofilesctl set power-saver ;;
     "Balanced")      powerprofilesctl set balanced ;;
     "Performance")   powerprofilesctl set performance ;;

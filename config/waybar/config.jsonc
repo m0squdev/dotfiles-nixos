@@ -44,6 +44,12 @@
         "format-connected": "󰂱 {num_connections}",
         "tooltip-format": "{controller_alias}  ·  {status}",
         "tooltip-format-connected": "{controller_alias}  ·  {num_connections} connected\n{device_enumerate}",
+        // One line per connected device. The -battery variant is used for
+        // devices that report a level and falls back to the plain one for those
+        // that don't, so a device with no battery just shows its name rather
+        // than a dangling "· %". Needs Experimental in modules/core/bluetooth.nix.
+        "tooltip-format-enumerate-connected": "{device_alias}",
+        "tooltip-format-enumerate-connected-battery": "{device_alias}  ·  {device_battery_percentage}%",
         "on-click": "/home/valer/.config/swaync/toggles.sh bt toggle",
         "on-click-right": "/home/valer/.config/waybar/scripts/bt-menu.sh"
     },

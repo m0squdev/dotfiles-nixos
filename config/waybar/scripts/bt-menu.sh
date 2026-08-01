@@ -3,8 +3,9 @@
 # fuzzel renders stdin asynchronously, so rather than scan-then-open we open the
 # menu immediately and let devices appear as discovery finds them. A background
 # producer polls `bluetoothctl devices` and streams each newly-seen device into
-# the open picker; "●" marks connected ones. MACs are kept OUT of the rows, so
-# after a pick we re-resolve the chosen name back to its MAC.
+# the open picker; "●" marks connected devices, "○" paired ones, and unpaired
+# ones carry no marker. MACs are kept OUT of the rows, so after a pick we
+# re-resolve the chosen name back to its MAC.
 # Pick a connected device to disconnect it, any other to pair+trust+connect.
 
 bluetoothctl power on >/dev/null 2>&1
@@ -22,17 +23,28 @@ cleanup() { [ -n "$prod_pid" ] && kill "$prod_pid" 2>/dev/null; rm -f "$fifo"; }
 trap cleanup EXIT
 
 {
+  # Is $1 in the space-separated MAC list $2? The lists below are flattened with
+  # tr because the match needs a space on BOTH sides — with newline separators
+  # every entry but a lone one has a "\n" on one side and silently never matches.
+  has() { case " $2 " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
   declare -A seen
   for _ in $(seq 1 50); do
-    conn=$(bluetoothctl devices Connected 2>/dev/null | awk '{print $2}')
+    conn=$(bluetoothctl devices Connected 2>/dev/null | awk '{print $2}' | tr '\n' ' ')
+    paired=$(bluetoothctl devices Paired 2>/dev/null | awk '{print $2}' | tr '\n' ' ')
     while read -r _ mac name; do
       [ -z "$mac" ] && continue
       [ -n "${seen[$mac]}" ] && continue
       seen["$mac"]=1
-      case " $conn " in
-        *" $mac "*) printf '●  %s\n' "$name" ;;
-        *)          printf '   %s\n' "$name" ;;
-      esac
+      # Shared marker convention with wifi-menu.sh:
+      #   ●  connected      ○  paired (known)      (blank)  unpaired
+      if has "$mac" "$conn"; then
+        printf '●  %s\n' "$name"
+      elif has "$mac" "$paired"; then
+        printf '○  %s\n' "$name"
+      else
+        printf '   %s\n' "$name"
+      fi
     done < <(bluetoothctl devices 2>/dev/null)
     sleep 0.6
   done
@@ -43,8 +55,8 @@ chosen=$(fuzzel --dmenu --prompt "Bluetooth > " --lines 10 --width 44 < "$fifo")
 cleanup; trap - EXIT
 
 [ -z "$chosen" ] && exit 0
-# Strip the "●  " / "   " marker to recover the plain device name.
-name=$(printf '%s' "$chosen" | sed -E 's/^● +//; s/^ +//')
+# Strip the leading "●  " / "○  " / "   " marker to recover the device name.
+name=$(printf '%s' "$chosen" | sed -E 's/^[●○] +//; s/^ +//')
 [ -z "$name" ] && exit 0
 
 # Re-resolve the display name back to a MAC (no IDs are shown in the rows).
