@@ -22,6 +22,11 @@
   hardware.bluetooth = {
     enable = true;      # explicit now, rather than inherited from the GNOME module
     powerOnBoot = true;
+
+    # Battery reporting (org.bluez.Battery1) is still gated behind BlueZ's
+    # experimental flag. Without it a headset exposes no battery at all, and
+    # waybar's {device_battery_percentage} has nothing to show.
+    settings.General.Experimental = true;
   };
 
   # Supplies the pairing agent niri otherwise lacks, and re-authorises known
@@ -29,12 +34,4 @@
   # unexpected pair request is still visible. Its tray icon lands in waybar's
   # "⋯" drawer next to kdeconnect's — see the spawn-at-startup in niri/config.kdl.
   services.blueman.enable = true;
-
-  # The Intel controller (ibt-0041, on USB 1-14) is allowed to runtime-suspend
-  # after 2s idle, and was spending ~50% of uptime suspended. That isn't what
-  # dropped the link keys, but it makes an already-fragile link flaky, and the
-  # controller is not a device worth saving milliwatts on for a desktop.
-  boot.extraModprobeConfig = ''
-    options btusb enable_autosuspend=0
-  '';
 }
