@@ -128,10 +128,13 @@
         "max-length": 60,
         "escape": true,
         "tooltip": false,
-        // Left-click the title = jump-list: a fuzzel menu of the focused app's
-        // desktop actions (New Window, New Private Window, ...). See
-        // scripts/window-actions.sh.
-        "on-click": "/home/valer/.config/waybar/scripts/window-actions.sh"
+        // Left-click  = the Overview (same as Mod+O), regardless of what is
+        //                focused — so the pill always does something.
+        // Right-click = jump-list: a fuzzel menu of the focused app's desktop
+        //                actions (New Window, New Private Window, ...). See
+        //                scripts/window-actions.sh.
+        "on-click": "niri msg action toggle-overview",
+        "on-click-right": "/home/valer/.config/waybar/scripts/window-actions.sh"
     },
 
     "clock": {

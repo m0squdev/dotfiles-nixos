@@ -41,8 +41,13 @@ poke() {
 while true; do
     poke
     niri msg --json event-stream 2>/dev/null | while IFS= read -r line; do
+        # Workspace and Overview events matter as much as window ones: the pill
+        # shows the FOCUSED WORKSPACE's active window (see window-title.sh), so
+        # moving between workspaces inside the Overview must repaint it even
+        # though no window-level event fires.
         case "$line" in
-            *WindowFocusChanged*|*WindowOpenedOrChanged*|*WindowClosed*|*WindowsChanged*)
+            *WindowFocusChanged*|*WindowOpenedOrChanged*|*WindowClosed*|*WindowsChanged*|\
+            *WorkspaceActivated*|*WorkspacesChanged*|*OverviewOpenedOrClosed*)
                 poke ;;
         esac
     done
