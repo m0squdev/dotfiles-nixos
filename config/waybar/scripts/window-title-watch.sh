@@ -45,9 +45,18 @@ while true; do
         # shows the FOCUSED WORKSPACE's active window (see window-title.sh), so
         # moving between workspaces inside the Overview must repaint it even
         # though no window-level event fires.
+        #
+        # WorkspaceActiveWindowChanged is the one that keeps the pill live while
+        # the Overview is open. Moving between WINDOWS of one workspace in there
+        # fires ONLY that event — no WindowFocusChanged (nothing holds keyboard
+        # focus in the Overview) and no WindowOpenedOrChanged. Without it the
+        # selection moved and the title just sat there. Note *WorkspaceActivated*
+        # does not cover it: that pattern needs the literal "WorkspaceActivated",
+        # and this event reads "WorkspaceActive" + "WindowChanged".
         case "$line" in
             *WindowFocusChanged*|*WindowOpenedOrChanged*|*WindowClosed*|*WindowsChanged*|\
-            *WorkspaceActivated*|*WorkspacesChanged*|*OverviewOpenedOrClosed*)
+            *WorkspaceActivated*|*WorkspacesChanged*|*WorkspaceActiveWindowChanged*|\
+            *OverviewOpenedOrClosed*)
                 poke ;;
         esac
     done
