@@ -22,6 +22,7 @@
     ../../modules/core/audio.nix
     ../../modules/core/bluetooth.nix
     ../../modules/core/graphics.nix
+    ../../modules/core/swap.nix
 
     # --- Desktop (niri + GNOME session, theming, fonts, input method) ---
     ../../modules/desktop/gnome.nix
