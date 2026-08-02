@@ -42,6 +42,12 @@
     # launches it via spawn-at-startup (start-after-tray.sh, minimized). A
     # second XDG-autostart copy just raced and crash-looped, so it was dropped.
 
+    # Claude Desktop (claude-desktop-extra) — Catppuccin Mocha theme selection.
+    # NOTE: like fcitx5's profile above, this becomes a read-only store symlink,
+    # so the app's own Ctrl+Shift+T theme picker can't persist a change — edit
+    # ../config/Claude/claude-desktop-extra.jsonc instead.
+    "Claude/claude-desktop-extra.jsonc".source = ../config/Claude/claude-desktop-extra.jsonc;
+
     # GTK 3 (adw-gtk3 follows the Catppuccin theme). GTK 4 lives in ./gtk.nix.
     "gtk-3.0/settings.ini".source = ../config/gtk-3.0/settings.ini;
 

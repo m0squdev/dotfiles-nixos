@@ -1,0 +1,17 @@
+// Claude Desktop — theme selection (claude-desktop-extra).
+//
+// "catppuccin-mocha" is one of the fork's 7 BUILT-IN themes, so naming it here
+// is enough — no "themes" palette block is needed. The other Catppuccin
+// flavours are catppuccin-macchiato, catppuccin-frappe and catppuccin-latte.
+//
+// The theme supplies a dual light/dark palette; which half is used follows the
+// app's OWN toggle in Settings -> Appearance. Leave that on Dark to get Mocha.
+//
+// NOTE: this file becomes a read-only store symlink, exactly like fcitx5's
+// profile (see ../../home/dotfiles.nix). The app's in-app theme picker
+// (Ctrl+Shift+T / Settings -> Extra -> Themes) writes back to this path, so it
+// will NOT be able to persist a change — edit this file in the repo and rebuild
+// instead. Hand edits are read at startup, so restart the app afterwards.
+{
+  "activeTheme": "catppuccin-mocha"
+}

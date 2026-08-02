@@ -36,6 +36,7 @@
     # --- Apps with real configuration (each its own ad-hoc module) ---
     ../../modules/apps/zen.nix
     ../../modules/apps/syncthing.nix
+    ../../modules/apps/claude-desktop.nix
 
     # --- One-line apps / simple toggles (edit the list inside) ---
     ../../modules/apps/misc.nix
