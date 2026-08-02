@@ -420,6 +420,10 @@ window-rule {
     match app-id=r#"^com\.stremio\.Stremio$"#
     match app-id=r#"^obsidian$"#
     match app-id=r#"^libreoffice"#
+    // Anchored so it matches ONLY the main window: Claude Desktop's Quick Entry
+    // popup is a separate app-id ("claude-quick-entry") and is meant to stay a
+    // small floating window, not be maximized.
+    match app-id=r#"^com\.anthropic\.Claude$"#
     open-maximized true
 }
 
