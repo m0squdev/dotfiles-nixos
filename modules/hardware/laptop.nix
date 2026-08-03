@@ -1,0 +1,45 @@
+# Laptop-only bits: things that exist because the machine has a battery, a lid
+# and a backlight. Nothing here is specific to one model — a second laptop
+# imports the same file. Desktop hosts simply omit the import.
+{ pkgs, ... }:
+{
+  # --- Power profiles -------------------------------------------------------
+  # power-profiles-daemon (power-saver / balanced / performance) rather than TLP:
+  # the two conflict, and PPD is what GNOME Settings' Power panel and — more to
+  # the point here — waybar's power pill drive. config/waybar/scripts/power.sh
+  # calls `powerprofilesctl get` for its tooltip and `powerprofilesctl set` from
+  # the right-click menu, so without this the pill shows a battery percentage and
+  # its menu does nothing.
+  #
+  # GNOME's module already switches this on by mkDefault, but that is a side
+  # effect of a desktop we don't log into (we run niri). State it explicitly so
+  # the pill's behaviour doesn't depend on ../desktop/gnome.nix staying imported.
+  services.power-profiles-daemon.enable = true;
+
+  # Intel's thermal daemon. On a fanless-ish 15W U-series chip in a thin chassis
+  # the firmware's own trip points are conservative; thermald applies the
+  # platform's DPTF tables so it throttles gradually instead of hitting the
+  # hard thermal limit and dropping to a crawl.
+  services.thermald.enable = true;
+
+  # --- Backlight ------------------------------------------------------------
+  # The brightness keys go through brightnessctl (bound in config/niri/config.kdl
+  # via ../desktop/niri.nix). Writing /sys/class/backlight/*/brightness is
+  # root-only by default and logind does NOT hand the active session an ACL for
+  # it, so the keys silently do nothing until both of these are in place:
+  #
+  #   1. brightnessctl's udev rule, which chgrp's the sysfs node to `video`.
+  #      NixOS only installs rules from services.udev.packages — putting the
+  #      package in environment.systemPackages (which ../desktop/niri.nix does)
+  #      gets you the binary and not the rule.
+  services.udev.packages = [ pkgs.brightnessctl ];
+  #   2. the user in that group. Merged with the extraGroups list in
+  #      ../core/users.nix rather than replacing it.
+  users.users."valer".extraGroups = [ "video" ];
+
+  # --- Lid / suspend --------------------------------------------------------
+  # Deliberately left at the defaults: lid close suspends to RAM, and that is
+  # what we want. Hibernation is NOT available — ../core/swap.nix uses zram, and
+  # suspend-to-disk needs a real swap area at least the size of RAM. Adding one
+  # is the prerequisite if hibernate is ever wanted here.
+}
