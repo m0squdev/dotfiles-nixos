@@ -38,20 +38,20 @@
   outputs = inputs@{ self, nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
-    in
-    {
-      # Build with:  sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
-      # (the bare `--flake ~/PWUE/dotfiles-nixos` also works, since the output
-      #  name matches this machine's hostname.)
-      nixosConfigurations.valerios-nix = nixpkgs.lib.nixosSystem {
+
+      # Every host is assembled identically — same nixpkgs, same Home Manager
+      # wiring. The ONLY thing that varies is the composition root, which is
+      # where a host picks its modules and its generated hardware scan. Adding a
+      # machine is therefore one line in nixosConfigurations below.
+      mkHost = configuration: nixpkgs.lib.nixosSystem {
         inherit system;
         # Makes `inputs` available as a module argument (used by
         # ./modules/apps/claude-desktop.nix).
         specialArgs = { inherit inputs; };
         modules = [
           # This host's composition root: imports the feature modules under
-          # ./modules and declares what's unique to this machine.
-          ./hosts/valerios-nix/configuration.nix
+          # ./modules and declares what's unique to that machine.
+          configuration
 
           # Home Manager as a NixOS module, so ONE `nixos-rebuild switch`
           # rebuilds the system AND lays down every dotfile.
@@ -65,6 +65,18 @@
             home-manager.users.valer = import ./home/home.nix;
           }
         ];
+      };
+    in
+    {
+      # Build with:  sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#<name>
+      # (the bare `--flake ~/PWUE/dotfiles-nixos` also works on each machine,
+      #  since the output names match their hostnames.)
+      nixosConfigurations = {
+        # Desktop: NVIDIA GTX 1650.
+        valerios-nix = mkHost ./hosts/valerios-nix/configuration.nix;
+
+        # HP Laptop 14s-dq0xxx: Intel UHD 620, battery/lid/backlight.
+        valerios-laptop = mkHost ./hosts/valerios-laptop/configuration.nix;
       };
     };
 }
