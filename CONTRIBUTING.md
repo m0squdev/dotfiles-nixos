@@ -4,17 +4,29 @@ NixOS **flake** + **Home Manager**. One command rebuilds the OS *and* lays down
 every dotfile:
 
 ```sh
-sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
+sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#<host>
 ```
+
+`<host>` is `valerios-nix` (desktop) or `valerios-laptop` (HP 14s). On either
+machine the bare `--flake ~/PWUE/dotfiles-nixos` also works, since the output
+names match the hostnames.
 
 Always edit files **in this repo**, then rebuild. Never edit the live
 `~/.config/*` copies (they're read-only symlinks into the Nix store) or
 `/etc/nixos`.
 
+Both hosts share every module; a change to `modules/*` or `home/*` lands on both
+the next time each one rebuilds. Check the other host still evaluates before
+assuming a change is host-local — it costs nothing and needs no privileges:
+
+```sh
+nix eval --raw .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath
+```
+
 ## Layout
 
 ```
-flake.nix                                  entry point; defines each host
+flake.nix                                  entry point; `mkHost` + one line per host
 hosts/<host>/configuration.nix             composition root — imports modules + host-only settings
 hosts/<host>/hardware-configuration.nix    auto-generated, per-machine (never shared)
 modules/core/*.nix                         always-on system essentials (boot, nix, locale, audio, …)
@@ -34,14 +46,36 @@ Everything a host runs is **one line** in `hosts/<host>/configuration.nix`:
 - **A one-line app** → it lives in `modules/apps/misc.nix`. Remove its package
   from the list, or its `programs.<x>.enable` / `services.<x>.enable` line.
 
-## Add a new host (e.g. a laptop)
+## Add a new host
 
-1. On the new machine run `nixos-generate-config` and copy its generated
-   `hardware-configuration.nix` into `hosts/<name>/`.
-2. Add `hosts/<name>/configuration.nix` that imports the subset of `modules/*`
-   that host wants (skip `modules/hardware/nvidia.nix`, drop apps you don't
-   need, add a host-specific hardware module if needed).
-3. Register it in `flake.nix` under `nixosConfigurations.<name>`.
+`hosts/valerios-laptop/` is the worked example — copy its shape.
+
+1. On the new machine run `nixos-generate-config`, copy the generated
+   `hardware-configuration.nix` into `hosts/<name>/`, and **`git add` it**.
+   Flakes only see git-tracked files, so until it is staged evaluation dies with
+   *"Path ... is not tracked by Git"* — and the file is per-machine, so it is
+   never copied from another host.
+2. Add `hosts/<name>/configuration.nix` importing the subset of `modules/*` that
+   host wants: drop apps you don't need, and take only the `modules/hardware/*`
+   files that match the metal (`nvidia.nix` for the GTX 1650, `intel-graphics.nix`
+   for an Intel iGPU, `laptop.nix` for anything with a battery, `fingerprint.nix`
+   only for the Elan `04f3:0c00` reader). Anything genuinely unique to that one
+   machine — the hostname, a modprobe quirk — stays inline in this file rather
+   than becoming a module.
+3. Register it in `flake.nix`. `mkHost` does all the assembly (nixpkgs, Home
+   Manager, `specialArgs`), so this is one line:
+
+   ```nix
+   nixosConfigurations = {
+     <name> = mkHost ./hosts/<name>/configuration.nix;
+   };
+   ```
+
+   Nothing else in `flake.nix` should need touching — if you find yourself
+   editing `mkHost` for one host, that setting probably belongs in that host's
+   `configuration.nix` instead.
+4. Set `system.stateVersion` in the new host file to the release it is
+   *installed* from, and leave it there. It is not a "current version" field.
 
 ## THE RULE: one line stays in `misc`, more than one line gets its own module
 
@@ -61,6 +95,11 @@ The same rule applies to `modules/{core,desktop,hardware}/` and to `home/`: a
 one-liner joins an existing grouped file; anything with real configuration earns
 its own file (see `home/gtk.nix` vs `home/dotfiles.nix` on the Home-Manager side).
 
+On the hardware side it has a second job: it is also how a host opts *out*.
+`laptop.nix` and `fingerprint.nix` are separate files rather than one
+`hp-14s.nix` because the split is what makes them reusable — a second laptop
+with a different reader takes `laptop.nix` and leaves `fingerprint.nix`.
+
 ### Why "one line = shared file", not "one file per app"?
 
 A module that is *imported* but disabled still runs its top-level `let` bindings
@@ -69,3 +108,8 @@ so keeping it in its own file means that fetch happens **only** on hosts that
 import it — drop the import and there's zero Zen-related work. Trivial packages
 have no such cost, so bundling them in `misc.nix` keeps the tree small without
 paying anything.
+
+`modules/hardware/fingerprint.nix` is the same trick for a much bigger bill: its
+`let` does a `builtins.fetchGit` of a libfprint fork *and* the host that imports
+it compiles libfprint and fprintd from source. The desktop, which has no
+fingerprint reader, pays none of that purely by not having the import line.
