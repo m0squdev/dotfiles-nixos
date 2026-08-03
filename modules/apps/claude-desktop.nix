@@ -28,10 +28,33 @@
 # The theme itself is selected in ../../config/Claude/claude-desktop-extra.jsonc
 # (wired up by ../../home/dotfiles.nix).
 { pkgs, inputs, ... }:
+let
+  system = pkgs.stdenv.hostPlatform.system;
+
+  # HASH OVERRIDE — remove when the flake.nix rev is bumped past 55bb93d.
+  #
+  # Upstream's packaging/nix/package.nix hardcodes the v1.24012.9 release
+  # tarball's hash (its own comment: "TODO: CI updates this hash after building
+  # the release tarball"). That GitHub release ASSET was later re-published with
+  # different bytes and the pin was never bumped, so the fetch fails with a
+  # fixed-output hash mismatch on any host whose /nix/store must actually
+  # download it (a fresh install — this was hit installing valerios-laptop; the
+  # desktop only escapes it because the old tarball is already in its store).
+  #
+  # Re-point src at the same URL with the current asset's hash — verified by
+  # downloading it: a valid 232 MB gzip of the expected claude-desktop/ tree.
+  # This is pinned to the exact rev in ../../flake.nix; bumping that rev should
+  # bring a corrected upstream hash, at which point delete this whole override.
+  claude-desktop-extra =
+    inputs.claude-desktop-extra.packages.${system}.claude-desktop-extra.overrideAttrs (_: {
+      src = pkgs.fetchurl {
+        url = "https://github.com/patrickjaja/claude-desktop-extra/releases/download/v1.24012.9/claude-desktop-1.24012.9-linux.tar.gz";
+        hash = "sha256-usk37SSOMpH5EpCmdPfJRLQ0EC+J3WXjF3Mtg/WU/iI=";
+      };
+    });
+in
 {
-  environment.systemPackages = [
-    inputs.claude-desktop-extra.packages.${pkgs.stdenv.hostPlatform.system}.claude-desktop-extra
-  ];
+  environment.systemPackages = [ claude-desktop-extra ];
 
   # Draw the window frame with the SYSTEM decorations (so niri's own border /
   # focus ring frames it, matching every other window) instead of the app's

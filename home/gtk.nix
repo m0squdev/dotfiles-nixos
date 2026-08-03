@@ -13,4 +13,13 @@
     "gtk-4.0/assets".source = config.lib.file.mkOutOfStoreSymlink
       "/run/current-system/sw/share/themes/catppuccin-mocha-mauve-standard+normal/gtk-4.0/assets";
   };
+
+  # The desktop-wide "prefer dark" signal. The `gtk-application-prefer-dark-theme`
+  # flag in the settings.ini files (GTK 3 and 4) is the LEGACY GTK mechanism and
+  # never reaches the freedesktop portal — so xdg-desktop-portal reports "no
+  # colour preference" and portal-aware apps that follow the system (Zen/Firefox
+  # in auto mode, libadwaita apps, …) fall back to LIGHT. This gsettings key is
+  # the modern signal the portal actually exposes; prefer-dark is what makes
+  # those apps resolve to dark and pick up the Catppuccin theming.
+  dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
 }

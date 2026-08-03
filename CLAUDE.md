@@ -42,7 +42,8 @@ Batch changes and ask for **one** rebuild at the end rather than one per edit.
 
 ## Pulling in a package that isn't in nixpkgs
 
-Two patterns are in use, and the choice is forced, not stylistic:
+When the upstream ships a **flake**, two patterns are in use and the choice is
+forced, not stylistic:
 
 - **`builtins.getFlake` inside the app's own module** (see `modules/apps/zen.nix`)
   — preferred. The fetch only happens on hosts that import that module.
@@ -53,7 +54,12 @@ Two patterns are in use, and the choice is forced, not stylistic:
   transitive inputs at evaluation time. Declaring it as an input makes this
   repo's `flake.lock` pin them.
 
-Pin a rev in either case.
+When the upstream is **just a source tree** (no flake, no release), write a
+plain derivation and `pkgs.callPackage` it from the module that needs it — see
+`modules/desktop/bibata-catppuccin-cursor.nix` (the Catppuccin-recolored cursor,
+built with `resvg` + `clickgen`), wired into `modules/desktop/theming.nix`.
+
+Pin a rev in every case.
 
 ## Config files an app writes back to
 

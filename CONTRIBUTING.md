@@ -88,8 +88,9 @@ Everything a host runs is **one line** in `hosts/<host>/configuration.nix`:
   together in that one file.
 
 Already following the rule: `modules/apps/zen.nix` (flake + wrapper),
-`modules/apps/syncthing.nix` (service block). Staying in `misc.nix`:
-`firefox`/`kdeconnect` (`.enable`), `obsidian`/`vesktop` (a package).
+`modules/apps/syncthing.nix` (service block), `home/vesktop.nix` (package +
+its Catppuccin theme). Staying in `misc.nix`: `firefox`/`kdeconnect`
+(`.enable`), `obsidian`/`libreoffice` (a package).
 
 The same rule applies to `modules/{core,desktop,hardware}/` and to `home/`: a
 one-liner joins an existing grouped file; anything with real configuration earns

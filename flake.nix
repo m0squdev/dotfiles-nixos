@@ -31,6 +31,23 @@
     # little extra evaluation but avoids a version-skew breakage.
     claude-desktop-extra.url =
       "github:patrickjaja/claude-desktop-extra/55bb93d559e045736bd73742e9e63d238bde5ad3";
+
+    # Zen browser (see ./modules/apps/zen.nix).
+    #
+    # A real flake INPUT rather than the module-local `builtins.getFlake` used
+    # for the plain package, because we now consume this flake's *home-manager
+    # module* (`homeModules.beta`) to manage Zen's profile, prefs and theme
+    # declaratively. That module imports `mkFirefoxModule` from
+    # `home-manager.outPath`, so it MUST resolve to the SAME Home Manager that
+    # evaluates our user config — otherwise the two versions' option schemas
+    # skew. `follows` pins both nixpkgs and home-manager to ours; getFlake
+    # cannot express that. Rev matches the one the old inline getFlake used.
+    zen-browser = {
+      url =
+        "github:0xc000022070/zen-browser-flake/51602966429e8ccae61324e56b51c37308d1b64e";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
   };
 
   # `inputs@` so the whole input set can be handed to the modules through

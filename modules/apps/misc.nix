@@ -15,7 +15,8 @@
 
   # Plain packages.
   environment.systemPackages = with pkgs; [
-    vesktop
+    # vesktop moved to ../../home/vesktop.nix — it now carries config (the
+    # Catppuccin online theme), so per THE RULE it earned its own module.
     stremio-linux-shell   # Stremio media center (native GTK/webkit shell; old qt5 `stremio` was removed from nixpkgs 2026-02)
     geary                 # email client
     fragments             # GNOME BitTorrent client (GTK/libadwaita, follows the Catppuccin GTK theme)

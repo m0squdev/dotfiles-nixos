@@ -2,6 +2,14 @@
 # bits (GTK CSS, Kvantum/qt6ct config, kgx livery toolkit) are placed by Home
 # Manager — see ../../home/gtk.nix and ../../home/dotfiles.nix.
 { pkgs, ... }:
+let
+  # Bibata recolored to Catppuccin Mocha, built from source (nixpkgs only has
+  # stock Bibata; the recolor has no release). See ./bibata-catppuccin-cursor.nix
+  # for why it's built rather than fetched. Selected as the cursor theme in
+  # ../../config/{gtk-3.0,gtk-4.0}/settings.ini and ../../config/niri/config.kdl,
+  # all as "Bibata-Catppuccin-Mocha".
+  bibata-cursor-catppuccin = pkgs.callPackage ./bibata-catppuccin-cursor.nix { };
+in
 {
   # Theme Qt/KDE apps (kdeconnect-app, etc.) with Catppuccin Mocha via Kvantum.
   # This installs qt5ct + qt6ct AND the Kvantum style engine for BOTH Qt5 & Qt6,
@@ -43,7 +51,7 @@
     })
     adw-gtk3                    # lets GTK3 apps follow the theme cleanly
     papirus-icon-theme          # Papirus-Dark icons (pairs well with Catppuccin)
-    catppuccin-cursors.mochaDark
+    bibata-cursor-catppuccin    # cursor theme (built from source, see the let above)
     # Kvantum theme for Qt/KDE apps (matches the mauve accent). The Kvantum ENGINE
     # + qt5ct/qt6ct come from the `qt = { … }` block above; this is just the theme
     # it renders. Provides "catppuccin-mocha-mauve", selected in ~/.config/Kvantum/.
