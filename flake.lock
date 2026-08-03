@@ -95,7 +95,8 @@
       "inputs": {
         "claude-desktop-extra": "claude-desktop-extra",
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_2",
+        "zen-browser": "zen-browser"
       }
     },
     "systems": {
@@ -110,6 +111,30 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "zen-browser": {
+      "inputs": {
+        "home-manager": [
+          "home-manager"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1783866614,
+        "narHash": "sha256-o2h5BfVz9MPIERBPVHtvQGilphtNn5+cCuqqfY5Lkq8=",
+        "owner": "0xc000022070",
+        "repo": "zen-browser-flake",
+        "rev": "51602966429e8ccae61324e56b51c37308d1b64e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "0xc000022070",
+        "repo": "zen-browser-flake",
+        "rev": "51602966429e8ccae61324e56b51c37308d1b64e",
         "type": "github"
       }
     }
