@@ -21,11 +21,20 @@ set -uo pipefail
 # nf-md-battery ladders, 0..100 in tens. Same MDI family as the rest of the bar
 # (the old built-in module used Font Awesome, which looked foreign next to it).
 DISCHARGING=(󰂎 󰁺 󰁻 󰁼 󰁽 󰁾 󰁿 󰂀 󰂁 󰂂 󰁹)
-# Charging is a single glyph, not a ladder: nf-md-battery-charging is the only
-# one in this font with the bolt INSIDE the battery — the graded
-# battery-charging-low/medium/high all hang the bolt off the right edge, which
-# reads badly next to the other pills. Exact level is in the tooltip.
-CHARGING=󰂄
+
+# A small glyph PRECEDES the level ladder to signal state, instead of a dedicated
+# combined icon. The old charging glyph (nf-md-battery-charging, 󰂄) crammed the
+# bolt inside the battery and read poorly, so the level is always drawn from the
+# ladder above and the state rides in front of it:
+#   charging                 -> bolt      (BOLT)
+#   discharging, Battery saver -> leaf    (LEAF)
+#   discharging, Performance   -> rocket  (ROCKET)
+#   discharging, Balanced      -> nothing (just the level)
+# All nf-md, so they sit in the same family as the ladder. Exact % is in the
+# tooltip either way.
+BOLT=󱐋       # nf-md-lightning-bolt
+LEAF=󰌪       # nf-md-leaf
+ROCKET=󱓞     # nf-md-rocket-launch
 POWER_GLYPH=󰐥
 
 # --- battery discovery --------------------------------------------------------
@@ -68,42 +77,72 @@ read_battery() {
   printf '%s %s' "$cap" "$status"
 }
 
-# Current profile as a human label, or empty if power-profiles-daemon is absent
-# (better to drop the segment than to assert a profile that may not be active).
+# Active profile, or empty if power-profiles-daemon is absent. Read straight off
+# D-Bus with busctl (a C tool from systemd, ~25ms) instead of `powerprofilesctl
+# get` — the latter is a Python CLI that spends ~0.9s importing GLib and opening
+# D-Bus on EVERY call. That delay is invisible on the 30s tooltip poll but very
+# visible on the right-click menu, which called it before it could open fuzzel:
+# the picker just hung for the best part of a second. net.hadess.PowerProfiles is
+# PPD's long-standing well-known name (it now also claims the freedesktop.UPower
+# one; either works). Output is `s "balanced"`, stripped to `balanced`.
+active_profile() {
+  busctl --system get-property net.hadess.PowerProfiles /net/hadess/PowerProfiles \
+    net.hadess.PowerProfiles ActiveProfile 2>/dev/null \
+    | sed -n 's/^s "\(.*\)"$/\1/p'
+}
+
+# Human label for a raw profile ($1), or empty for none — so cmd_status can read
+# the profile once (it also needs the raw value to pick the discharging prefix)
+# and pass it here instead of paying for a second active_profile call.
 profile_label() {
-  case "$(powerprofilesctl get 2>/dev/null)" in
+  case "$1" in
     power-saver) printf 'Battery saver' ;;
     balanced)    printf 'Balanced' ;;
     performance) printf 'Performance' ;;
     '')          printf '' ;;
-    *)           powerprofilesctl get 2>/dev/null ;;
+    *)           printf '%s' "$1" ;;
   esac
 }
 
 # --- subcommands --------------------------------------------------------------
 cmd_status() {
-  local bat capacity status idx glyph class label tooltip
+  local bat capacity status idx glyph class label tooltip prof prefix
   if ! bat=$(read_battery); then
     # Desktop. No "tooltip" key at all — Waybar leaves tooltip_ empty and shows
     # nothing, rather than falling back to the glyph.
     printf '{"text":"%s","class":"power"}\n' "$POWER_GLYPH"
     return 0
   fi
-  capacity=${bat% *}
+  # Split on the FIRST space only: the status can itself be two words ("Not
+  # charging", reported when the battery is held at a charge limit), so a
+  # single-% strip would leave "Not" glued to the capacity and the arithmetic
+  # below would blow up under `set -u`.
+  capacity=${bat%% *}
   status=${bat#* }
 
   idx=$(( (capacity + 5) / 10 ))
   [ "$idx" -gt 10 ] && idx=10
   [ "$idx" -lt 0 ] && idx=0
 
+  # Read the profile once — it drives both the discharging prefix and the tooltip.
+  prof=$(active_profile)
+
   case "$status" in
     Charging)
-      glyph=$CHARGING; class=charging ;;
+      # Bolt in front of the current level, instead of the cramped combined glyph.
+      glyph="${BOLT} ${DISCHARGING[$idx]}"; class=charging ;;
     Full)
       glyph=${DISCHARGING[10]}; class=battery ;;
     *)
-      # Discharging, "Not charging" (held at a charge limit), Unknown
-      glyph=${DISCHARGING[$idx]}
+      # Discharging, "Not charging" (held at a charge limit), Unknown. Front the
+      # level with the profile's glyph (trailing space folded in so Balanced —
+      # empty prefix — draws the bare level with no stray leading space).
+      case "$prof" in
+        power-saver) prefix="$LEAF " ;;
+        performance) prefix="$ROCKET " ;;
+        *)           prefix="" ;;
+      esac
+      glyph="${prefix}${DISCHARGING[$idx]}"
       if   [ "$capacity" -le 15 ]; then class=critical
       elif [ "$capacity" -le 30 ]; then class=warning
       else                              class=battery
@@ -114,7 +153,7 @@ cmd_status() {
   # power-profiles-daemon isn't answering, say so outright rather than quietly
   # dropping the segment: a tooltip that reads "Unknown power mode" is a visible
   # signal that something is broken.
-  label=$(profile_label)
+  label=$(profile_label "$prof")
   [ -z "$label" ] && label="Unknown power mode"
   tooltip="${label}  ·  ${capacity}%"
 
@@ -128,7 +167,8 @@ cmd_mode_menu() {
   read_battery >/dev/null || exit 0
 
   local current chosen
-  current=$(powerprofilesctl get 2>/dev/null) || exit 0
+  current=$(active_profile)
+  [ -z "$current" ] && exit 0
 
   row() { [ "$1" = "$current" ] && printf '●  %s\n' "$2" || printf '   %s\n' "$2"; }
 

@@ -23,7 +23,7 @@
   services.thermald.enable = true;
 
   # --- Backlight ------------------------------------------------------------
-  # The brightness keys go through brightnessctl (bound in config/niri/config.kdl
+  # The brightness keys go through brightnessctl (bound in config/niri/base.kdl
   # via ../desktop/niri.nix). Writing /sys/class/backlight/*/brightness is
   # root-only by default and logind does NOT hand the active session an ACL for
   # it, so the keys silently do nothing until both of these are in place:
@@ -36,6 +36,22 @@
   #   2. the user in that group. Merged with the extraGroups list in
   #      ../core/users.nix rather than replacing it.
   users.users."valer".extraGroups = [ "video" ];
+
+  # --- Battery pill repaint -------------------------------------------------
+  # The waybar power pill (config/waybar/scripts/power.sh) polls on a 30s timer,
+  # so left to itself the charging <-> discharging glyph could lag up to half a
+  # minute behind the cable — and it sometimes flips quickly only because a poll
+  # happened to land right after the event. The plug/unplug is knowable at once:
+  # the AC adapter and the battery both sit under SUBSYSTEM=="power_supply" and
+  # fire a "change" uevent the moment the cable moves (and again on every 1%
+  # step). Turn each of those into the SIGRTMIN+10 the module already listens on
+  # ("signal": 10 in config/waybar/config.jsonc, which re-runs its exec) so the
+  # glyph flips immediately; the 30s poll stays as a backstop. pkill runs as root
+  # here and matches by exact comm across all users, so it reaches the waybar the
+  # session started under its own uid.
+  services.udev.extraRules = ''
+    SUBSYSTEM=="power_supply", ACTION=="change", RUN+="${pkgs.procps}/bin/pkill -RTMIN+10 -x .waybar-wrapped"
+  '';
 
   # --- Lid / suspend --------------------------------------------------------
   # Deliberately left at the defaults: lid close suspends to RAM, and that is
