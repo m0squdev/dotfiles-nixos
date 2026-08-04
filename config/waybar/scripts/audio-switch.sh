@@ -110,14 +110,14 @@ input_port() {
 # device.id property of node $1 (which card a sink/source belongs to).
 node_device() { wpctl inspect "$1" 2>/dev/null | awk -F'"' '/device\.id/{print $2; exit}'; }
 
-# Id of the default sink|source (the one wpctl marks with "*").
+# Id of the default sink|source. Resolved via WirePlumber's @DEFAULT_AUDIO_*@
+# names rather than the "*" in `wpctl status`, because a default that is a
+# loopback source (e.g. a Bluetooth mic) is filed under "Filters", where the
+# status-parsing missed its mark and nothing showed as selected.
 default_node() {
-  wpctl status | awk -v k="$1" '
-    /^Audio/{a=1}/^Video/{a=0}
-    a&&/Sinks:/{s=(k=="sink");next}
-    a&&/Sources:/{s=(k=="source")}
-    a&&(/Sink endpoints:/||/Filters:/){s=0}
-    s&&/\*/{ l=$0; sub(/^[^0-9]*/,"",l); sub(/\..*/,"",l); print l; exit }'
+  local tgt
+  [ "$1" = sink ] && tgt="@DEFAULT_AUDIO_SINK@" || tgt="@DEFAULT_AUDIO_SOURCE@"
+  wpctl inspect "$tgt" 2>/dev/null | sed -n '1s/^id \([0-9]*\).*/\1/p'
 }
 
 # Id of the sink|source node belonging to card $2 (used after a profile switch).
