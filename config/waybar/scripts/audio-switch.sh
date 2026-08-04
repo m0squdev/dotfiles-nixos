@@ -154,7 +154,9 @@ done < <(wpctl status | awk '
 
 if [ "$kind" = sink ]; then
   defcard="$(node_device "$(default_node sink)")"
-  for cid in "${!cardname[@]}"; do
+  # Stable order by numeric card id: internal cards (enumerated at boot) sort
+  # before hotplugged Bluetooth. The input list is ordered the same way.
+  for cid in $(printf '%s\n' "${!cardname[@]}" | sort -n); do
     cname="${cardname[$cid]}"
     active="$(active_profile_of "$cid")"
     actroute="$(active_route_of "$cid" Output)"
@@ -194,15 +196,17 @@ else
     /^Audio/{a=1}/^Video/{a=0} a&&/Devices:/{d=1;next} a&&/Sinks:/{d=0}
     d&&/\[bluez5\]/{ l=$0; sub(/^[^0-9]*/,"",l); sub(/\..*/,"",l); print l }')
 
-  # Emit one source as "Card · Port" (matching the output picker), e.g.
-  # "Built-in Audio · Internal Microphone", "WH-XB910N · Handsfree".
+  # Collect one source per call as "cardid<TAB>label<TAB>action", labelled
+  # "Card · Port" (matching the output picker), e.g. "Built-in Audio · Internal
+  # Microphone", "WH-XB910N · Handsfree". Sorted by card id before emitting.
+  srcrecs=()
   add_source() {   # $1=node id  $2=fallback label
-    local nid="$1" fb="$2" card port lbl
+    local nid="$1" fb="$2" card port lbl mark
     card="$(node_device "$nid")"
     port="$(input_port "$card")"
     if [ -n "${cardname[$card]:-}" ] && [ -n "$port" ]; then lbl="${cardname[$card]} · ${port}"; else lbl="$fb"; fi
-    [ "$nid" = "$defsrc" ] && m="●  " || m="   "
-    labels+=("${m}${lbl}"); actions+=("def:${nid}")
+    [ "$nid" = "$defsrc" ] && mark="●  " || mark="   "
+    srcrecs+=("${card:-999}"$'\t'"${mark}${lbl}"$'\t'"def:${nid}")
   }
 
   # Real sources (Sources section), skipping the Bluetooth cards' raw source.
@@ -228,6 +232,12 @@ else
     /^Audio/{a=1}/^Video/{a=0}
     a&&/Filters:/{s=1;next} a&&(/Streams:/||/Sinks:/||/Sources:/){s=0}
     s&&/\[Audio\/Source\]/{ l=$0; sub(/^[^0-9]*/,"",l); sub(/\..*/,"",l); print l }')
+
+  # Emit in card-id order (stable sort → keeps discovery order within a card),
+  # so the input list matches the output picker's ordering.
+  while IFS=$'\t' read -r _ lbl act; do
+    labels+=("$lbl"); actions+=("$act")
+  done < <(printf '%s\n' "${srcrecs[@]}" | sort -s -n -k1,1 -t$'\t')
 fi
 
 [ ${#labels[@]} -eq 0 ] && exit 0
