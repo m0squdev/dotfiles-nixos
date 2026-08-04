@@ -73,5 +73,5 @@ in
   # GlobalShortcuts backend doesn't bind on niri, and the GNOME fallback
   # `--install-gnome-hotkey` needs gsettings schemas this host doesn't have), and
   # the feature isn't wanted. If that ever changes, `claude-desktop --toggle` is
-  # the documented escape hatch to bind from niri's config.kdl.
+  # the documented escape hatch to bind from niri's base.kdl.
 }

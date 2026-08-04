@@ -60,6 +60,44 @@
 
   networking.hostName = "valerios-laptop";
 
+  # --- niri display layout (this host only) ---------------------------------
+  # niri's entry point is ~/.config/niri/config.kdl. The cross-host config lives
+  # in ../../config/niri/base.kdl (symlinked in by ../../home/dotfiles.nix); this
+  # host's config.kdl just `include`s it and layers on the ONE thing unique to
+  # this machine — where its external monitor sits. Keeping it here (not in the
+  # shared base) is why the desktop never inherits this output block. niri
+  # resolves the relative include against the symlink's own directory
+  # (~/.config/niri), so `include "base.kdl"` needs no path.
+  #
+  # The built-in panel is pinned at the origin FIRST. This matters: niri places
+  # explicitly-positioned outputs and then auto-places the rest to the RIGHT of
+  # them, so if only the external were positioned, eDP-1 would be auto-dropped to
+  # its right and the laptop would end up on the far right with the LG on its
+  # left. Anchoring eDP-1 at 0,0 makes it the left reference the LG sits beside.
+  #
+  # The external is matched by the monitor's make/model/serial exactly as printed
+  # by `niri msg outputs` — NOT the HDMI-A-1 connector — so it binds to THIS
+  # specific LG panel on whatever port it lands on, and is simply inert whenever
+  # that panel isn't connected. It sits to the right of eDP-1, raised so its
+  # bottom edge is 1/3 of the laptop panel's height above the laptop's bottom edge:
+  #   x = 1536 → eDP-1's logical width (1920 @ scale 1.25), i.e. flush to its right
+  #   y = −504 → 576 − 1080, where 576 is the target bottom edge
+  #              (laptop bottom 864 − 864/3 = 288) and 1080 is the LG's own
+  #              logical height (1920×1080 @ scale 1)
+  # The y value assumes the LG stays 1920×1080 @ scale 1; change its mode or
+  # scale and its logical height — so this offset — has to be recomputed.
+  home-manager.users.valer.xdg.configFile."niri/config.kdl".text = ''
+    include "base.kdl"
+
+    output "eDP-1" {
+        position x=0 y=0
+    }
+
+    output "LG Electronics M2352D 0x01010101" {
+        position x=1536 y=-504
+    }
+  '';
+
   # The Wi-Fi/Bluetooth card is a Realtek RTL8821CE (rtw88_8821ce). Its firmware
   # is redistributable-but-unfree and is pulled in by
   # hardware.enableRedistributableFirmware, which the generated

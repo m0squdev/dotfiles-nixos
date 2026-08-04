@@ -4,7 +4,7 @@
 # Lists cliphist's stored history in fuzzel's dmenu mode and copies the chosen entry
 # back onto the Wayland clipboard, ready to paste with Ctrl+V (Ctrl+Shift+V in a
 # terminal). History is recorded by the `wl-paste --watch cliphist store` daemon
-# started in config.kdl. Needs the cliphist and wl-clipboard packages.
+# started in base.kdl. Needs the cliphist and wl-clipboard packages.
 
 # `cliphist list` emits "ID<tab>preview" columns; --with-nth=2 shows only the preview
 # (hiding the numeric ID and the tab gap), while fuzzel still returns the FULL line on

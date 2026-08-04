@@ -45,6 +45,16 @@
 
   networking.hostName = "valerios-nix";
 
+  # --- niri display layout (this host only) ---------------------------------
+  # niri's entry point is ~/.config/niri/config.kdl. The cross-host config lives
+  # in ../../config/niri/base.kdl (symlinked in by ../../home/dotfiles.nix). This
+  # host needs no monitor-specific tweaks, so its config.kdl is just the include —
+  # add `output "…"` blocks after it if this machine ever needs a fixed layout
+  # (see hosts/valerios-laptop/configuration.nix for the pattern).
+  home-manager.users.valer.xdg.configFile."niri/config.kdl".text = ''
+    include "base.kdl"
+  '';
+
   # NixOS release whose stateful defaults (file locations, DB versions, …) this
   # machine was first installed with. Do NOT bump casually — read `man
   # configuration.nix` / the manual first. Home Manager's home.stateVersion in

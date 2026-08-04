@@ -6,7 +6,7 @@ let
   # Bibata recolored to Catppuccin Mocha, built from source (nixpkgs only has
   # stock Bibata; the recolor has no release). See ./bibata-catppuccin-cursor.nix
   # for why it's built rather than fetched. Selected as the cursor theme in
-  # ../../config/{gtk-3.0,gtk-4.0}/settings.ini and ../../config/niri/config.kdl,
+  # ../../config/{gtk-3.0,gtk-4.0}/settings.ini and ../../config/niri/base.kdl,
   # all as "Bibata-Catppuccin-Mocha".
   bibata-cursor-catppuccin = pkgs.callPackage ./bibata-catppuccin-cursor.nix { };
 in
@@ -17,7 +17,7 @@ in
   # found (a bare environment.systemPackages install does not). It also sets
   # QT_STYLE_OVERRIDE=kvantum. The Kvantum *theme* itself (catppuccin-kvantum) is
   # in the package list below and selected in ~/.config/Kvantum/kvantum.kvconfig;
-  # ~/.config/niri/config.kdl overrides QT_QPA_PLATFORMTHEME to qt6ct so Qt6 apps
+  # ~/.config/niri/base.kdl overrides QT_QPA_PLATFORMTHEME to qt6ct so Qt6 apps
   # use qt6ct for icons/fonts.
   qt = {
     enable = true;

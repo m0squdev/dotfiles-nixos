@@ -73,7 +73,7 @@
   # Supplies the pairing agent niri otherwise lacks, and re-authorises known
   # devices on reconnect. Prompts on screen rather than blindly accepting, so an
   # unexpected pair request is still visible. Its tray icon lands in waybar's
-  # "⋯" drawer next to kdeconnect's — see the spawn-at-startup in niri/config.kdl.
+  # "⋯" drawer next to kdeconnect's — see the spawn-at-startup in niri/base.kdl.
   services.blueman.enable = true;
 
 }

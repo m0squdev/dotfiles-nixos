@@ -71,6 +71,15 @@ input {
 
     // Focus windows and outputs automatically when moving the mouse into them.
     // Setting max-scroll-amount="0%" makes it work only on windows already fully on screen.
+    //
+    // Left OFF deliberately. It WOULD make Mod+scroll change the workspace on the
+    // monitor under the cursor (the workspace binds act on the active output, and
+    // this keeps the output under the pointer active) — but niri has no way to
+    // make ONLY the output follow the mouse: window focus follows too, on every
+    // hover, which is unwanted here. There is no pointer-position IPC to script
+    // around it either. To switch the other monitor's workspace, make it active
+    // first — click it, or Mod+Shift+Left/Right (focus-monitor-*, below) — then
+    // Mod+scroll. Neither reacts to passive hover.
     // focus-follows-mouse max-scroll-amount="0%"
 }
 
@@ -117,6 +126,13 @@ cursor {
     // automatically.
     position x=1280 y=0
 }
+
+// NOTE: this is the SHARED base config, included by every host's config.kdl.
+// Per-host monitor layout (output positions/scale/mode) does NOT belong here —
+// a host that needs to place a specific display does it in its own
+// ~/.config/niri/config.kdl, which `include`s this file and then adds its
+// `output "…"` blocks. See hosts/valerios-laptop/configuration.nix for the
+// external-monitor example.
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
