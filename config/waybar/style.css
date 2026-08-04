@@ -66,6 +66,12 @@ window#waybar {
 #workspaces button {
     color: #6c7086; /* overlay0 — inactive dots */
     padding: 0 6px;
+    /* Pin the pill width instead of letting it hug the ●/○ glyph. Waybar sizes a
+       glyph-hugging button by the glyph's advance width, which rounds differently
+       under fractional output scale — so the pills came out narrower on the
+       scaled laptop than on the scale-1 desktop. A fixed min-width renders the
+       same at any scale, keeping both hosts identical. */
+    min-width: 28px;
     margin: 2px 2px;
     border-radius: 999px;
     background: transparent;
@@ -133,6 +139,13 @@ window#waybar {
 
 tooltip {
     background-color: #181825; /* mantle */
+    /* 1px hairline — thinnest, chosen for the lighter look. Caveat: it can't
+       render identically across hosts. Waybar is a GTK3 client and can't scale
+       fractionally, so on a fractional output (e.g. the laptop's 1.25) niri
+       renders it at 2x and downscales, and a 1px line lands on ~1.25 physical px
+       with antialiasing — slightly softer/fatter than the crisp 1px on an
+       integer-scale host. A 2px border reads more uniform across scales if that
+       consistency ever matters more than thinness. */
     border: 1px solid #cba6f7; /* mauve */
     border-radius: 8px;
 }
