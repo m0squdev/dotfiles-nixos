@@ -1,7 +1,7 @@
 # Japanese (and any) input method via fcitx5 + Mozc. fcitx5 is the smoother
 # choice than ibus on Wayland/niri; waylandFrontend makes it use niri's
 # text-input protocol. Mozc gives kanji conversion + prediction and hiragana/
-# katakana modes. fcitx5 is autostarted from ~/.config/niri/config.kdl; the
+# katakana modes. fcitx5 is autostarted from ~/.config/niri/base.kdl; the
 # input methods + toggle key live in ~/.config/fcitx5/. NOTE: do NOT also add
 # fcitx5 to environment.systemPackages — that breaks Mozc addon detection.
 { pkgs, ... }:
