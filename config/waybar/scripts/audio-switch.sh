@@ -16,9 +16,11 @@
 # INPUT: sources don't have that problem — the analog mic is always present, and a
 # Bluetooth mic is exposed by WirePlumber as an always-on loopback source
 # (bluez5.loopback=true) that auto-engages HSP/HFP only while something records.
-# So the input picker just lists the real source nodes (including those loopback
-# ones, which wpctl files under "Filters") and sets the default. No profile
-# switching — that would needlessly drop Bluetooth playback to call quality.
+# So the input picker lists the real source nodes — including those loopback ones,
+# which wpctl files under "Filters" — labelled "Card · Port" like the output
+# picker, and just sets the default. No profile switching (that would needlessly
+# drop Bluetooth playback to call quality), and a Bluetooth card's raw per-profile
+# source is suppressed in favour of its loopback so the mic appears only once.
 kind="${1:-sink}"
 case "$kind" in
   sink)   prompt="Output > " ;;
@@ -91,6 +93,18 @@ active_route_of() {
     /Prop: key .*:Route:/          { f="";  next }
     f=="i" && /Int /{ i=$2 }
     f=="d" && /Id / { if (($0 ~ /Output/ ? "Output" : "Input")==want) { print i; exit } }'
+}
+
+# Input port description of card $1 — its active input route, else the first
+# available one (e.g. "Internal Microphone", "Handsfree").
+input_port() {
+  local act; act="$(active_route_of "$1" Input)"
+  routes_of "$1" | awk -F'\t' -v act="$act" '
+    $1=="Input" && $4!="no" {
+      if ($2==act) { print $3; found=1; exit }
+      if (first=="") first=$3
+    }
+    END { if (!found && first!="") print first }'
 }
 
 # device.id property of node $1 (which card a sink/source belongs to).
@@ -172,12 +186,30 @@ if [ "$kind" = sink ]; then
   done
 else
   defsrc="$(default_node source)"
-  # Real source nodes from the Sources section …
+  # bluez5 cards: on HSP/HFP their raw profile source appears in "Sources" AND the
+  # always-on loopback appears in "Filters", both described by the device name —
+  # two identical entries. Suppress the raw one; the loopback is the stable pick.
+  declare -A bt_card
+  while read -r bid; do [ -n "$bid" ] && bt_card["$bid"]=1; done < <(wpctl status | awk '
+    /^Audio/{a=1}/^Video/{a=0} a&&/Devices:/{d=1;next} a&&/Sinks:/{d=0}
+    d&&/\[bluez5\]/{ l=$0; sub(/^[^0-9]*/,"",l); sub(/\..*/,"",l); print l }')
+
+  # Emit one source as "Card · Port" (matching the output picker), e.g.
+  # "Built-in Audio · Internal Microphone", "WH-XB910N · Handsfree".
+  add_source() {   # $1=node id  $2=fallback label
+    local nid="$1" fb="$2" card port lbl
+    card="$(node_device "$nid")"
+    port="$(input_port "$card")"
+    if [ -n "${cardname[$card]:-}" ] && [ -n "$port" ]; then lbl="${cardname[$card]} · ${port}"; else lbl="$fb"; fi
+    [ "$nid" = "$defsrc" ] && m="●  " || m="   "
+    labels+=("${m}${lbl}"); actions+=("def:${nid}")
+  }
+
+  # Real sources (Sources section), skipping the Bluetooth cards' raw source.
   while IFS=$'\t' read -r nid nname; do
     [ -z "$nid" ] && continue
-    [ "$nid" = "$defsrc" ] && m="●  " || m="   "
-    labels+=("${m}${nname}")
-    actions+=("def:${nid}")
+    [ -n "${bt_card[$(node_device "$nid")]:-}" ] && continue
+    add_source "$nid" "$nname"
   done < <(wpctl status | awk '
     /^Audio/{a=1}/^Video/{a=0}
     a&&/Sources:/{s=1;next} a&&(/Source endpoints:/||/Filters:/||/Streams:/||/Sinks:/){s=0}
@@ -186,15 +218,12 @@ else
       nm=l; sub(/^[0-9]+\.[[:space:]]*/,"",nm); sub(/[[:space:]]*\[vol:.*$/,"",nm)
       gsub(/^[[:space:]]+|[[:space:]]+$/,"",nm)
       print id "\t" nm }')
-  # … plus loopback microphones (Bluetooth), which wpctl files under "Filters"
-  # tagged [Audio/Source]; label them by node.description (their friendly name).
+
+  # Loopback mics (Bluetooth), which wpctl files under "Filters".
   while read -r nid; do
     [ -z "$nid" ] && continue
-    nname="$(wpctl inspect "$nid" 2>/dev/null | awk -F'"' '/node\.description/{print $2; exit}')"
-    [ -z "$nname" ] && nname="$(wpctl inspect "$nid" 2>/dev/null | awk -F'"' '/node\.name/{print $2; exit}')"
-    [ "$nid" = "$defsrc" ] && m="●  " || m="   "
-    labels+=("${m}${nname}")
-    actions+=("def:${nid}")
+    nn="$(wpctl inspect "$nid" 2>/dev/null | awk -F'"' '/node\.description/{print $2; exit}')"
+    add_source "$nid" "${nn:-mic}"
   done < <(wpctl status | awk '
     /^Audio/{a=1}/^Video/{a=0}
     a&&/Filters:/{s=1;next} a&&(/Streams:/||/Sinks:/||/Sources:/){s=0}
