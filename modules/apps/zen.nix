@@ -22,9 +22,14 @@
 #   * `settings` below land in user.js (defaults re-asserted each launch); you
 #     can still change them live in Zen's UI for the session — same caveat as
 #     config/fcitx5/profile. Edit them here to make a change stick.
-#   * The app is labelled "Zen Browser (Beta)" again (the flake's branding). The
-#     old module re-wrapped only to drop "(Beta)"; that cosmetic override isn't
-#     worth reintroducing on top of the HM module.
+#   * The flake stamps "Zen Browser (Beta)" into the desktop-entry name (what the
+#     app launcher shows). That "(Beta)" is the flake's own applicationName
+#     default (package.nix), NOT an upstream pre-release marker — the `beta`
+#     variant IS Zen's stable release (every Zen flake ships the same 1.x.yb
+#     binary; the trailing "b" is upstream's version suffix). We drop it back to
+#     plain "Zen Browser" via the module's `unwrappedPackage` hook — see below.
+#     (Surveyed the alternatives: this flake is by far the most used and the only
+#     one shipping a Home Manager module, which the profile/theme setup needs.)
 #
 # The theme is the upstream Catppuccin "Mocha / Mauve" port (mauve #cba6f7 to
 # match the niri focus ring), vendored under config/zen/mocha-mauve/. Its
@@ -32,12 +37,28 @@
 # "system" theme (auto); the desktop advertises dark through the
 # `color-scheme = prefer-dark` gsettings key set in ../../home/gtk.nix — the GTK
 # settings.ini dark flag alone does NOT reach the xdg portal that Zen reads.
-{ inputs, ... }:
+{ inputs, pkgs, ... }:
 let
   # config/zen/mocha-mauve/{userChrome.css,userContent.css,zen-logo-mocha.svg}
   theme = ../../config/zen/mocha-mauve;
   # Fixed profile name → deterministic path ~/.config/zen/zen/ (see header).
   profile = "zen";
+
+  # Zen's stable build with the cosmetic "(Beta)" dropped from its name. This is
+  # the flake's `beta-unwrapped` with applicationName forced back to plain "Zen
+  # Browser"; the module's `unwrappedPackage` hook (below) then wraps it exactly
+  # like the built-in variant — MOZ_LEGACY_PROFILES injected via applyEnv, our
+  # prefs applied. Caveat: that hook does NOT re-apply the module's `policies`
+  # option, so the two we rely on are baked straight into the override here.
+  # Both hosts are x86_64-linux; pkgs selects the matching system.
+  zen-unwrapped =
+    inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.beta-unwrapped.override {
+      applicationName = "Zen Browser";
+      policies = {
+        DisableAppUpdate = true; # updater can't write the read-only store anyway
+        DisableTelemetry = true; # was the module's mkDefault; keep it
+      };
+    };
 in
 {
   home-manager.users.valer = {
@@ -46,9 +67,10 @@ in
     programs.zen-browser = {
       enable = true;
 
-      # Nix owns updates; the in-app updater can't write to the read-only store
-      # anyway, so silence it.
-      policies.DisableAppUpdate = true;
+      # Stable Zen with the "(Beta)" label dropped from the desktop entry; the
+      # policies that used to live in `policies` below are baked into this build
+      # (see zen-unwrapped — the unwrappedPackage path ignores `policies`).
+      unwrappedPackage = zen-unwrapped;
 
       # Make Zen honour the profiles.ini we generate. Home Manager writes that
       # file as a read-only /nix/store symlink; Firefox's "dedicated profile per
