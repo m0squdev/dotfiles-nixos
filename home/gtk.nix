@@ -22,4 +22,11 @@
   # the modern signal the portal actually exposes; prefer-dark is what makes
   # those apps resolve to dark and pick up the Catppuccin theming.
   dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+
+  # Show dotfiles in Nautilus by default (equivalent to toggling Ctrl+H on every
+  # launch). Nautilus 50 DEPRECATED its own `org.gnome.nautilus.preferences
+  # show-hidden-files` — its schema marks that key "ignored" and now reads the GTK
+  # file-chooser `show-hidden` key instead (which the file-picker dialogs share).
+  # So the setting genuinely IS a GTK one now, which is why it lives here.
+  dconf.settings."org/gtk/Settings/FileChooser".show-hidden = true;
 }
