@@ -29,4 +29,15 @@
   # file-chooser `show-hidden` key instead (which the file-picker dialogs share).
   # So the setting genuinely IS a GTK one now, which is why it lives here.
   dconf.settings."org/gtk/Settings/FileChooser".show-hidden = true;
+
+  # Select the Catppuccin Mocha GtkSourceView scheme (id "catppuccin-mocha")
+  # delivered by ./dotfiles.nix. GtkSourceView has NO global "default scheme"
+  # setting — each app chooses its own — so it is set here on GNOME Text Editor,
+  # the only GtkSourceView-5 consumer on these hosts. style-variant is pinned to
+  # dark so the editor uses this (dark) scheme outright instead of trying to
+  # resolve a light counterpart, consistent with the prefer-dark desktop above.
+  dconf.settings."org/gnome/TextEditor" = {
+    style-scheme = "catppuccin-mocha";
+    style-variant = "dark";
+  };
 }
