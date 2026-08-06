@@ -37,6 +37,12 @@ LEAF=󰌪       # nf-md-leaf
 ROCKET=󱓞     # nf-md-rocket-launch
 POWER_GLYPH=󰐥
 
+# Low-charge colours for the LEVEL glyph only (see cmd_status). These live here,
+# not in style.css, because only part of the pill is tinted and a CSS class would
+# reach the whole label — prefix included. Mirror the Catppuccin peach/red there.
+COL_WARN='#fab387'   # <=30%
+COL_CRIT='#f38ba8'   # <=15%
+
 # --- battery discovery --------------------------------------------------------
 # Skips peripheral batteries: a wireless mouse or headset also shows up under
 # /sys/class/power_supply with type=Battery, but carries scope=Device.
@@ -106,7 +112,7 @@ profile_label() {
 
 # --- subcommands --------------------------------------------------------------
 cmd_status() {
-  local bat capacity status idx glyph class label tooltip prof prefix
+  local bat capacity status idx glyph class label tooltip prof prefix lvl
   if ! bat=$(read_battery); then
     # Desktop. No "tooltip" key at all — Waybar leaves tooltip_ empty and shows
     # nothing, rather than falling back to the glyph.
@@ -142,11 +148,16 @@ cmd_status() {
         performance) prefix="$ROCKET " ;;
         *)           prefix="" ;;
       esac
-      glyph="${prefix}${DISCHARGING[$idx]}"
-      if   [ "$capacity" -le 15 ]; then class=critical
-      elif [ "$capacity" -le 30 ]; then class=warning
-      else                              class=battery
-      fi ;;
+      # Tint ONLY the level glyph on a low charge — never the mode prefix, so a
+      # red battery still reads as "low" while the leaf/rocket keeps its meaning.
+      # CSS can't colour half a label, so it rides inline as a Pango span; the
+      # single-quoted attribute keeps the JSON below valid without escaping.
+      lvl=${DISCHARGING[$idx]}
+      if   [ "$capacity" -le 15 ]; then lvl="<span foreground='$COL_CRIT'>$lvl</span>"
+      elif [ "$capacity" -le 30 ]; then lvl="<span foreground='$COL_WARN'>$lvl</span>"
+      fi
+      glyph="${prefix}${lvl}"
+      class=battery ;;
   esac
 
   # "Balanced  ·  72%" — subject then value, matching every other pill. If

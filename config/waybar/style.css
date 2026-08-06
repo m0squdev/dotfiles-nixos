@@ -117,10 +117,10 @@ window#waybar {
 #pulseaudio.muted { color: #6c7086; } /* speaker muted */
 #custom-mic.muted { color: #6c7086; } /* mic muted */
 /* Power pill: 󰐥 on desktops, battery glyph on laptops (one module — see
-   scripts/power.sh). White by default; only a genuinely low charge takes color,
-   and .charging stays white since the bolt already says it. */
-#custom-power.warning       { color: #fab387; } /* <=30% */
-#custom-power.critical      { color: #f38ba8; } /* <=15% */
+   scripts/power.sh). The whole pill stays white; a low charge reddens ONLY the
+   battery level glyph, tinted inline as a Pango span in power.sh (the colours
+   live there as COL_WARN/COL_CRIT). A CSS class here can't reach half a label,
+   so it would drag the mode prefix — leaf/rocket — into the colour too. */
 
 /* Tray drawer: on hover the three-dots handle collapses to nothing so the
    revealed appindicators appear to take its place. The revealed tray keeps
