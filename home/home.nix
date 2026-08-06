@@ -9,6 +9,7 @@
     ./dotfiles.nix   # the bulk of ~/.config/* symlinks (one-liners)
     ./gtk.nix        # GTK theming (the one entry that needs real logic)
     ./vesktop.nix    # Vesktop (Discord) + Catppuccin online theme via Vencord
+    ./xdg-mime.nix   # own ~/.config/mimeapps.list; associations live in app modules
   ];
 
   home.username = "valer";
