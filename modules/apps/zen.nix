@@ -110,5 +110,23 @@ in
     # logo in alongside them — the path is fixed because we named the profile.
     home.file.".config/zen/${profile}/chrome/zen-logo-mocha.svg".source =
       theme + "/zen-logo-mocha.svg";
+
+    # Register Zen as the default browser. `xdg.mimeApps.enable` (the switch that
+    # makes HM own ~/.config/mimeapps.list) lives centrally in ../../home/xdg-mime.nix;
+    # only the associations Zen actually owns belong here, and they merge in. These
+    # are the handlers `xdg-settings set default-web-browser` touches plus the
+    # about/unknown schemes, so link clicks from any app open in Zen. The id is the
+    # desktop FILE name (zen-beta.desktop) — unaffected by the "Zen Browser"
+    # applicationName rename, which only changes the entry's Name field.
+    xdg.mimeApps.defaultApplications = let
+      zen = [ "zen-beta.desktop" ];
+    in {
+      "text/html" = zen;
+      "application/xhtml+xml" = zen;
+      "x-scheme-handler/http" = zen;
+      "x-scheme-handler/https" = zen;
+      "x-scheme-handler/about" = zen;
+      "x-scheme-handler/unknown" = zen;
+    };
   };
 }
