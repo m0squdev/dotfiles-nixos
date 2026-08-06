@@ -85,7 +85,10 @@ in
       profiles.${profile} = {
         id = 0; # id 0 ⇒ isDefault, and Default=1 in profiles.ini
         settings = {
-          "zen.view.use-single-toolbar" = true; # address bar across the top
+          # false ⇒ the address bar sits in its OWN toolbar across the top,
+          # separate from the tab strip (two bars). true would merge them into one
+          # compact toolbar.
+          "zen.view.use-single-toolbar" = false;
           "zen.view.show-newtab-button-top" = false; # new-tab button at the bottom
           # Reveal the exact-hex text field in the per-workspace theming picker
           # (off by default). There is NO pref for a "default workspace colour" —
