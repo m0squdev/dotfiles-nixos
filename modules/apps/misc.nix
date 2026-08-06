@@ -9,7 +9,6 @@
 { pkgs, ... }:
 {
   # Programs / services with a NixOS module (installs + wires them up).
-  programs.firefox.enable = true;
   programs.kdeconnect.enable = true;
   services.printing.enable = true;   # CUPS
 
