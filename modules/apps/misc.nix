@@ -20,7 +20,9 @@
     geary                 # email client
     fragments             # GNOME BitTorrent client (GTK/libadwaita, follows the Catppuccin GTK theme)
     obsidian              # Markdown knowledge base / notes
-    libreoffice           # office suite (GTK build, follows the Catppuccin GTK theme)
+    # libreoffice moved to ../../modules/apps/libreoffice.nix — it needs the
+    # SAL_USE_VCLPLUGIN env var (else it's un-themed under niri), so per THE RULE
+    # it earned its own module.
     alacritty             # terminal (Mod+T); Catppuccin Mocha config via Home Manager
     claude-code
     git

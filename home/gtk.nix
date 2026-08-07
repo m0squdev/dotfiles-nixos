@@ -21,7 +21,19 @@
   # in auto mode, libadwaita apps, …) fall back to LIGHT. This gsettings key is
   # the modern signal the portal actually exposes; prefer-dark is what makes
   # those apps resolve to dark and pick up the Catppuccin theming.
-  dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+  dconf.settings."org/gnome/desktop/interface" = {
+    color-scheme = "prefer-dark";
+
+    # The GTK theme via gsettings/dconf, mirroring gtk-theme-name in
+    # config/gtk-3.0/settings.ini. Ordinary GTK apps under niri read settings.ini,
+    # but apps that consult dconf instead — notably LibreOffice's gtk3 VCL plugin,
+    # which the nixpkgs wrapper wires to dconf through GIO_EXTRA_MODULES — read
+    # THIS key, whose schema default is "Adwaita", and so render un-themed. Set it
+    # here so both theming paths agree. (On valerios-nix this key had been set
+    # imperatively via `gsettings`, so LibreOffice happened to be themed there but
+    # not on a clean apply of the same config — this makes it uniform.)
+    gtk-theme = "catppuccin-mocha-mauve-standard+normal";
+  };
 
   # Show dotfiles in Nautilus by default (equivalent to toggling Ctrl+H on every
   # launch). Nautilus 50 DEPRECATED its own `org.gnome.nautilus.preferences
