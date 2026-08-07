@@ -99,6 +99,20 @@ in
     package = pkgs.fprintd.override { libfprint = libfprint-elanmoc2; };
   };
 
+  # Keep the reader powered — do NOT let USB runtime-suspend it. libfprint ships
+  # an autosuspend hwdb (60-autosuspend-libfprint-2.hwdb) that tags this sensor
+  # ID_AUTOSUSPEND=1, so after ~2s idle the kernel suspends it and has to reset
+  # it on the next access (visible as repeated `usb 1-7: reset full-speed USB
+  # device … xhci_hcd` in dmesg). With this match-on-chip driver the reset lands
+  # on the first swipe(s), which then read as "finger not recognized" — the exact
+  # "works first try sometimes, fails many retries other times" flakiness. Pinning
+  # power/control to "on" for just this device (04f3:0c00) stops the suspend, and
+  # with it the reset-on-wake; the cost is a sliver of idle power. `add|change`
+  # so it re-asserts if a bus reset re-emits a uevent.
+  services.udev.extraRules = ''
+    ACTION=="add|change", SUBSYSTEM=="usb", ATTR{idVendor}=="04f3", ATTR{idProduct}=="0c00", ATTR{power/control}="on"
+  '';
+
   # Enrol a finger AFTER the first switch — the templates live on the sensor and
   # in /var/lib/fprint, neither of which this repo manages:
   #     fprintd-enroll        (repeat with -f for more fingers)
