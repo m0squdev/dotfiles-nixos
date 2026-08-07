@@ -1,7 +1,7 @@
 # Laptop-only bits: things that exist because the machine has a battery, a lid
 # and a backlight. Nothing here is specific to one model — a second laptop
 # imports the same file. Desktop hosts simply omit the import.
-{ pkgs, ... }:
+{ pkgs, lib, config, ... }:
 {
   # --- Power profiles -------------------------------------------------------
   # power-profiles-daemon (power-saver / balanced / performance) rather than TLP:
@@ -53,9 +53,22 @@
     SUBSYSTEM=="power_supply", ACTION=="change", RUN+="${pkgs.procps}/bin/pkill -RTMIN+10 -x .waybar-wrapped"
   '';
 
-  # --- Lid / suspend --------------------------------------------------------
-  # Deliberately left at the defaults: lid close suspends to RAM, and that is
-  # what we want. Hibernation is NOT available — ../core/swap.nix uses zram, and
-  # suspend-to-disk needs a real swap area at least the size of RAM. Adding one
-  # is the prerequisite if hibernate is ever wanted here.
+  # --- Lid / suspend / hibernate -------------------------------------------
+  # Lid close stays at the default: suspend to RAM.
+  #
+  # Hibernation (suspend-to-disk) IS available here, unlike on a zram-only host:
+  # this machine's hardware-configuration.nix declares a real swap partition that
+  # is >= RAM (zram can't be a hibernation target — it lives in the very RAM the
+  # image has to save). Point the resume logic at that swap device so the kernel
+  # finds the image on the next boot; without resumeDevice, hibernate would write
+  # an image but never resume from it. It's derived from the first declared
+  # swapDevice, so a laptop with only zram (swapDevices = []) gets no resumeDevice
+  # and simply won't hibernate — and the Waybar power menu (scripts/powermenu.sh)
+  # offers Hibernate only when logind says it's possible, so the two stay in sync.
+  #
+  # NOTE: swap here is unencrypted, so the hibernation image (a copy of RAM) lands
+  # on unencrypted disk — the same exposure class as ordinary swap on this
+  # already-unencrypted machine, but worth knowing.
+  boot.resumeDevice = lib.mkIf (config.swapDevices != [ ])
+    (builtins.head config.swapDevices).device;
 }
