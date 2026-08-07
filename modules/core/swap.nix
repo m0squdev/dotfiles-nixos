@@ -11,11 +11,14 @@
 #     so paging out costs microseconds instead of an SSD round trip. Cold pages
 #     get squeezed rather than thrown away.
 #   * No SSD write wear.
-#   * The one thing it cannot do is hibernate (suspend-to-DISK needs a real swap
-#     area >= RAM). This host only ever suspends to RAM, which is unaffected —
-#     and given its history of NVIDIA resume trouble, hibernation is not a road
-#     worth going down anyway.
-# If hibernation is ever wanted, this needs a real swap partition/file instead.
+#   * zram cannot be a hibernation target — it lives in the very RAM that
+#     suspend-to-disk has to save. Hibernation needs a real on-disk swap >= RAM.
+#     The desktop has none (swapDevices = [ ]) and, with its NVIDIA resume
+#     history, deliberately stays suspend-to-RAM only. The LAPTOP, though, DOES
+#     declare a swap partition >= RAM and wires hibernation up on top of this
+#     zram — see boot.resumeDevice in ../hardware/laptop.nix. The two coexist
+#     fine: zram is the fast first tier (high priority), the partition the disk
+#     fallback (low priority) that doubles as the hibernation area.
 { ... }:
 {
   zramSwap = {
