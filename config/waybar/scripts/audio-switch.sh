@@ -21,11 +21,17 @@
 # picker, and just sets the default. No profile switching (that would needlessly
 # drop Bluetooth playback to call quality), and a Bluetooth card's raw per-profile
 # source is suppressed in favour of its loopback so the mic appears only once.
-kind="${1:-sink}"
+# Modes: "sink"/"source" open the picker. "label sink"/"label source" instead
+# print the current default's CARD NAME and exit — the part before the "·" in
+# this picker's options ("Built-in Audio", not "Built-in Audio · Speakers"). The
+# audio/mic tooltips use it (then append the volume) so they read the picker's
+# card name instead of the built-in {desc} ("Built-in Audio Analog Stereo").
+mode=picker; kind="${1:-sink}"
+[ "$1" = label ] && { mode=label; kind="${2:-sink}"; }
 case "$kind" in
   sink)   prompt="Output > " ;;
   source) prompt="Input > "  ;;
-  *) echo "usage: $0 {sink|source}" >&2; exit 1 ;;
+  *) echo "usage: $0 [label] {sink|source}" >&2; exit 1 ;;
 esac
 
 # --- PipeWire helpers -----------------------------------------------------
@@ -151,6 +157,17 @@ done < <(wpctl status | awk '
     gsub(/^[[:space:]]+|[[:space:]]+$/,"",nm)
     print id "\t" nm
   }')
+
+# --- label mode: print just the CARD NAME of the current default, then exit —
+#     the part before the "·" in this picker's options ("Built-in Audio", not
+#     "Built-in Audio · Speakers"). The audio/mic tooltips append the volume
+#     themselves, giving "Built-in Audio · 40%". ------------------------------
+if [ "$mode" = label ]; then
+  [ "$kind" = sink ] && card="$(node_device "$(default_node sink)")" \
+                     || card="$(node_device "$(default_node source)")"
+  printf '%s\n' "${cardname[$card]:-Audio}"
+  exit 0
+fi
 
 if [ "$kind" = sink ]; then
   defcard="$(node_device "$(default_node sink)")"

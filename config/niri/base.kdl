@@ -313,10 +313,9 @@ environment {
 }
 
 // This line starts waybar, a commonly used bar for Wayland compositors.
+// (The window-title pill updates itself now — its module script tails niri's
+// event-stream directly, so there's no longer a separate watcher to spawn here.)
 spawn-at-startup "waybar"
-
-// Pokes waybar's window-title module on niri focus/title changes (instant updates).
-spawn-at-startup "/home/valer/.config/waybar/scripts/window-title-watch.sh"
 
 // Notification daemon + quick-settings panel (opened from the bar or Mod+N).
 spawn-at-startup "swaync"

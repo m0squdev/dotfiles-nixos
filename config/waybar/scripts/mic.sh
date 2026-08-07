@@ -38,9 +38,11 @@ case "${1:-status}" in
       exit 0
     fi
 
-    # Device name, mirroring {desc} on the volume pill. node.description is the
-    # human-readable one ("USB Camera Mono"); fall back if it's ever missing.
-    desc=$(wpctl inspect "$src" 2>/dev/null \
+    # Card name (the part before "·" in the input picker), e.g. "Built-in Audio"
+    # (see audio-switch.sh label) — same scheme the volume pill uses. Falls back
+    # to node.description, then a literal.
+    desc=$(/home/valer/.config/waybar/scripts/audio-switch.sh label source 2>/dev/null)
+    [ -z "$desc" ] && desc=$(wpctl inspect "$src" 2>/dev/null \
       | sed -n 's/.*node\.description = "\(.*\)"/\1/p' | head -1)
     [ -z "$desc" ] && desc=Microphone
 
