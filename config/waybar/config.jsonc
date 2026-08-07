@@ -15,14 +15,23 @@
         "tooltip-format-deactivated": "Caffeine  ·  off"
     },
 
-    "pulseaudio": {
-        "format": "{icon}",
-        "format-muted": "󰸈",
-        "format-icons": { "default": "󰕾" },
-        "scroll-step": 5,
-        "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    // Output/volume pill — a custom module, NOT the built-in "pulseaudio". Only
+    // reason: the built-in tooltip can show at most {desc} (the sink's port
+    // description, e.g. "Built-in Audio Analog Stereo"), which disagrees with the
+    // right-click output picker's "Built-in Audio · Speakers". audio.sh reuses
+    // audio-switch.sh's card name so the tooltip reads "Built-in Audio · 40%".
+    // Left-click mutes; right-click opens the picker; scroll changes volume.
+    // Signal 11 = instant refresh after a mute toggle.
+    "custom/audio": {
+        "format": "{}",
+        "return-type": "json",
+        "exec": "/home/valer/.config/waybar/scripts/audio.sh status",
+        "interval": 3,
+        "signal": 11,
+        "on-click": "/home/valer/.config/waybar/scripts/audio.sh toggle",
         "on-click-right": "/home/valer/.config/waybar/scripts/audio-switch.sh sink",
-        "tooltip-format": "{desc}  ·  {volume}%"
+        "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
+        "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
     },
 
     "custom/mic": {
@@ -54,22 +63,20 @@
         "on-click-right": "/home/valer/.config/waybar/scripts/bt-menu.sh"
     },
 
-    // Same 󰖪 glyph for both "not connected" and "radio off" — they're told apart
-    // by color instead, in style.css (#network.disconnected is white, .disabled
-    // is gray). The disabled state comes from Waybar's own rfkill watch
-    // ("rfkill": true is the default), and `toggles.sh wifi toggle` runs
-    // `nmcli radio wifi off`, which soft-blocks rfkill — so no helper script is
-    // needed to tell the two apart.
-    "network": {
-        "format-wifi": "󰖩",
-        "format-ethernet": "󰈀",
-        "format": "󰖪",
-        "format-disconnected": "󰖪",
-        "format-disabled": "󰖪",
-        "tooltip-format-wifi": "{essid}  ·  {signalStrength}%\n{ipaddr}",
-        "tooltip-format-ethernet": "{ifname}  ·  {ipaddr}",
-        "tooltip-format-disconnected": "Wi-Fi  ·  not connected",
-        "tooltip-format-disabled": "Wi-Fi  ·  off",
+    // Driven by scripts/network.sh, NOT Waybar's built-in "network" module,
+    // because that module can't tell "connected but no internet" from plain
+    // "connected" (it has no reachability check) and has no "connecting" state.
+    // NetworkManager knows both; the script maps them to glyphs + CSS classes:
+    //   connecting  󰖩 (blinks, see style.css)   no-internet  󱚵
+    //   connected   󰖩                            disconnected 󰖪 white
+    //   disabled    󰖪 grey                        ethernet     󰈀
+    // "not connected" and "radio off" still share the 󰖪 glyph, told apart by
+    // colour (.disconnected white vs .disabled grey). Clicks are unchanged: left
+    // toggles the radio, right opens the network picker.
+    "custom/network": {
+        "exec": "/home/valer/.config/waybar/scripts/network.sh",
+        "return-type": "json",
+        "interval": 2,
         "on-click": "/home/valer/.config/swaync/toggles.sh wifi toggle",
         "on-click-right": "/home/valer/.config/waybar/scripts/wifi-menu.sh"
     },
@@ -102,9 +109,9 @@
         "on-click-right": "/home/valer/.config/waybar/scripts/power.sh mode-menu"
     },
 
-    "modules-left": ["niri/workspaces", "custom/window", "group/systray"],
+    "modules-left": ["niri/workspaces", "custom/window"],
     "modules-center": ["clock"],
-    "modules-right": ["idle_inhibitor", "pulseaudio", "custom/mic", "bluetooth", "network", "custom/inputlang", "custom/power"],
+    "modules-right": ["group/systray", "idle_inhibitor", "custom/audio", "custom/mic", "bluetooth", "custom/network", "custom/inputlang", "custom/power"],
 
     "niri/workspaces": {
         "format": "{icon}",
@@ -118,14 +125,15 @@
     // nothing is focused. Each bar's copy of this module gets its own monitor in
     // $WAYBAR_OUTPUT_NAME, and scripts/window-title.sh scopes to it — so the pill
     // shows the window focused on THIS screen, not the globally focused one.
-    // One-shot script (exits immediately — nothing Waybar can block on). It runs
-    // once at start and then only when poked with SIGRTMIN+9, which the separate
-    // window-title-watch.sh listener sends on every niri focus/title change. That
-    // gives instant updates without a long-lived child for Waybar to wait on.
+    // The script is a LIVE streaming producer: it stays running, tails niri's
+    // event-stream, and prints the title on every focus/title/workspace change —
+    // Waybar repaints the pill the instant a new line arrives. No interval, no
+    // signal, no separate watcher (this replaced the old one-shot + SIGRTMIN+9 +
+    // window-title-watch.sh scheme, whose poke could be dropped/desynced).
+    // restart-interval relaunches the producer if it ever exits (e.g. a crash).
     "custom/window": {
         "exec": "/home/valer/.config/waybar/scripts/window-title.sh",
-        "interval": "once",
-        "signal": 9,
+        "restart-interval": 1,
         "format": "{}",
         "max-length": 60,
         "escape": true,
@@ -145,13 +153,18 @@
         "on-click": "swaync-client -t -sw"
     },
 
-    // The whole tray is ONE pill now (background on #tray container, see style.css).
-    //   icon-size 16 — small, ~matching the bar's Nerd-Font glyphs and text.
-    //   spacing 6 — the gap BETWEEN icons INSIDE the shared pill (kept tight so
-    //     they read as one grouped module, not spaced-out separate items).
+    // One PADDED pill per icon (background on #tray > *, inner-image margin as the
+    // pill's padding — see style.css) — the tray reads as separate modules.
+    //   icon-size 14 — the rendered glyph size. Pill WIDTH is fixed separately in
+    //     style.css via min-width on the inner image (34px), so every pill is the
+    //     same width and the icon is centred; icon-size only affects the glyph.
+    //   spacing 10 — the gap BETWEEN the per-icon pills. This is real GTK box
+    //     spacing (CSS margin is a no-op on SNI items), set to match the visual
+    //     gap between the other modules (bar spacing 4 + each pill's 3px side
+    //     margin ×2 = 10), so the icons read as separate elements, not one group.
     "tray": {
-        "icon-size": 16,
-        "spacing": 6
+        "icon-size": 14,
+        "spacing": 10
     },
 
     // Appindicators collapsed behind a single handle icon, placed after the
@@ -159,7 +172,7 @@
     "group/systray": {
         "orientation": "horizontal",
         "drawer": {
-            "transition-duration": 300,
+            "transition-duration": 250,
             "transition-left-to-right": true,
             "children-class": "tray-drawer"
         },
