@@ -12,9 +12,12 @@
 #
 # Left-click stays powermenu.sh (lock/logout/suspend/reboot/shutdown) on both.
 #
-# TEST HOOK: export POWER_FAKE_CAPACITY (and optionally POWER_FAKE_STATUS) to
-# make a desktop render the laptop branch. Kept deliberately — this machine has
-# no battery, so it is the only way to exercise that path.
+# TEST HOOK: export POWER_FAKE_CAPACITY (and optionally POWER_FAKE_STATUS /
+# POWER_FAKE_AC, the latter 1 / 0 / none) to make a desktop render the laptop branch,
+# and to drive plugged/unplugged without touching a cable. Kept deliberately — a
+# desktop has no battery, so it is the only way to exercise that path, and the
+# awkward states (full-but-unplugged, plugged-but-"Not charging") are impractical
+# to reproduce by hand.
 
 set -uo pipefail
 
@@ -83,6 +86,57 @@ read_battery() {
   printf '%s %s' "$cap" "$status"
 }
 
+# --- AC adapter ---------------------------------------------------------------
+# Echoes 1 (cable in), 0 (cable out), or nothing when the host exposes no mains
+# adapter at all — is_plugged then falls back to the battery's own status.
+read_ac() {
+  # "none" fakes a host with no adapter at all — the fallback below is otherwise
+  # unreachable on any machine that has one, cable in or out.
+  if [ -n "${POWER_FAKE_AC:-}" ]; then
+    [ "$POWER_FAKE_AC" = none ] || printf '%s' "$POWER_FAKE_AC"
+    return 0
+  fi
+
+  local d kind found=''
+  for d in /sys/class/power_supply/*; do
+    [ -r "$d/type" ] && [ -r "$d/online" ] || continue
+    kind=$(<"$d/type")
+    # A USB-C / dock-charged laptop exposes its charging port as type=USB rather
+    # than Mains, so both count — on those machines a Mains-only scan would find
+    # no adapter and the cable would always look absent.
+    [ "$kind" = "Mains" ] || [ "$kind" = "USB" ] || continue
+    found=1
+    [ "$(<"$d/online")" = "1" ] && { printf '1'; return 0; }
+  done
+  [ -n "$found" ] && printf '0'
+  return 0
+}
+
+# Is the cable in? Takes the battery status ($1) only as a fallback.
+#
+# The battery's own status CANNOT answer this, which is what makes the adapter
+# authoritative here rather than merely tidier:
+#   - plugged and topped off  -> "Full", not "Charging"
+#   - just UNplugged at 100%  -> still "Full", until the capacity ticks off 100
+#   - plugged, held at a charge limit -> "Not charging"
+# Keying the bolt off the status alone therefore drops it while it is still
+# plugged, or strands it on after the cable is pulled. The adapter's online flag
+# flips the instant the cable moves, so it wins whenever the host has one.
+is_plugged() {
+  local ac
+  ac=$(read_ac)
+  case "$ac" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+
+  # No adapter exposed — best effort from the status.
+  case "$1" in
+    Charging|Full|"Not charging") return 0 ;;
+  esac
+  return 1
+}
+
 # Active profile, or empty if power-profiles-daemon is absent. Read straight off
 # D-Bus with busctl (a C tool from systemd, ~25ms) instead of `powerprofilesctl
 # get` — the latter is a Python CLI that spends ~0.9s importing GLib and opening
@@ -133,32 +187,32 @@ cmd_status() {
   # Read the profile once — it drives both the discharging prefix and the tooltip.
   prof=$(active_profile)
 
-  case "$status" in
-    Charging)
-      # Bolt in front of the current level, instead of the cramped combined glyph.
-      glyph="${BOLT} ${DISCHARGING[$idx]}"; class=charging ;;
-    Full)
-      glyph=${DISCHARGING[10]}; class=battery ;;
-    *)
-      # Discharging, "Not charging" (held at a charge limit), Unknown. Front the
-      # level with the profile's glyph (trailing space folded in so Balanced —
-      # empty prefix — draws the bare level with no stray leading space).
-      case "$prof" in
-        power-saver) prefix="$LEAF " ;;
-        performance) prefix="$ROCKET " ;;
-        *)           prefix="" ;;
-      esac
-      # Tint ONLY the level glyph on a low charge — never the mode prefix, so a
-      # red battery still reads as "low" while the leaf/rocket keeps its meaning.
-      # CSS can't colour half a label, so it rides inline as a Pango span; the
-      # single-quoted attribute keeps the JSON below valid without escaping.
-      lvl=${DISCHARGING[$idx]}
-      if   [ "$capacity" -le 15 ]; then lvl="<span foreground='$COL_CRIT'>$lvl</span>"
-      elif [ "$capacity" -le 30 ]; then lvl="<span foreground='$COL_WARN'>$lvl</span>"
-      fi
-      glyph="${prefix}${lvl}"
-      class=battery ;;
-  esac
+  if is_plugged "$status"; then
+    # Bolt in front of the current level, instead of the cramped combined glyph.
+    # Cable in is cable in whether the pack is filling or already full, so the
+    # bolt stays put at 100% rather than vanishing the moment it tops off.
+    glyph="${BOLT} ${DISCHARGING[$idx]}"
+    class=charging
+  else
+    # On battery. Front the level with the profile's glyph (trailing space folded
+    # in so Balanced — empty prefix — draws the bare level with no stray leading
+    # space).
+    case "$prof" in
+      power-saver) prefix="$LEAF " ;;
+      performance) prefix="$ROCKET " ;;
+      *)           prefix="" ;;
+    esac
+    # Tint ONLY the level glyph on a low charge — never the mode prefix, so a
+    # red battery still reads as "low" while the leaf/rocket keeps its meaning.
+    # CSS can't colour half a label, so it rides inline as a Pango span; the
+    # single-quoted attribute keeps the JSON below valid without escaping.
+    lvl=${DISCHARGING[$idx]}
+    if   [ "$capacity" -le 15 ]; then lvl="<span foreground='$COL_CRIT'>$lvl</span>"
+    elif [ "$capacity" -le 30 ]; then lvl="<span foreground='$COL_WARN'>$lvl</span>"
+    fi
+    glyph="${prefix}${lvl}"
+    class=battery
+  fi
 
   # "Balanced  ·  72%" — subject then value, matching every other pill. If
   # power-profiles-daemon isn't answering, say so outright rather than quietly
