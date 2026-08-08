@@ -327,8 +327,17 @@ spawn-at-startup "swayosd-server"
 // Japanese / IME: fcitx5 + Mozc (needs i18n.inputMethod.type="fcitx5" in
 // configuration.nix). Ctrl+Space toggles English <-> Japanese; switching to
 // Mozc types hiragana immediately. Input methods are in ~/.config/fcitx5/profile.
-// --replace so it wins if a systemd XDG-autostart also launched one.
-spawn-at-startup "fcitx5" "-d" "--replace"
+//
+// NOT spawned here on purpose. fcitx5 ships etc/xdg/autostart/org.fcitx.Fcitx5.desktop,
+// systemd's xdg-autostart generator turns it into app-org.fcitx.Fcitx5@autostart.service,
+// and niri.service pulls it in (`Wants=xdg-desktop-autostart.target`) — so it already
+// starts once, after niri has exported WAYLAND_DISPLAY into the user manager.
+// Adding `spawn-at-startup "fcitx5" "-d" "--replace"` on top made two instances race
+// a second into the session; the survivor could come up without a working Wayland
+// input-method binding, and then `fcitx5-remote` reports 0 (no input context) forever
+// — fcitx5 looks alive, but Japanese can never be switched on. Check with:
+//     systemctl --user status 'app-org.fcitx.Fcitx5@autostart.service'
+//     fcitx5-remote            # 0 = broken, 1 = English, 2 = Japanese
 
 // Idle management (needs the `swayidle` package): lock at 10 min, screen off,
 // suspend at 15 min. Paused while waybar's caffeine toggle is on.

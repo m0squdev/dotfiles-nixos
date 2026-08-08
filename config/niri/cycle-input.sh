@@ -5,7 +5,11 @@
 # flip US-intl/US. Degrades to a plain 2-layout toggle if fcitx5 isn't running yet
 # (e.g. before the i18n.inputMethod rebuild), so nothing breaks in the meantime.
 #
-# fcitx5-remote state: "2" = an engine (Mozc) is active (Japanese); "1"/empty = off.
+# fcitx5-remote state: "2" = an engine (Mozc) is active (Japanese), "1" = off, "0" =
+# fcitx5 is up but has no input context (nothing focusable has claimed text-input yet,
+# or its Wayland binding is broken), empty = fcitx5 not running at all. Treat anything
+# fcitx5 answers to as switchable — testing for exactly "1" made state 0 fall through
+# to the layout toggle, so Mod+K silently cycled us-intl/us and never reached Japanese.
 
 fstate=$(fcitx5-remote 2>/dev/null)
 idx=$(niri msg keyboard-layouts 2>/dev/null | awk '$1=="*"{print $2}')
@@ -17,8 +21,8 @@ if [ "$fstate" = "2" ]; then
 elif [ "${idx:-0}" = "0" ]; then
     # US-intl -> US
     niri msg action switch-layout next
-elif [ "$fstate" = "1" ]; then
-    # US, fcitx5 available -> Japanese (Mozc)
+elif [ -n "$fstate" ]; then
+    # US, fcitx5 answering -> Japanese (Mozc)
     fcitx5-remote -o 2>/dev/null
 else
     # fcitx5 not up yet -> just toggle back to US-intl
