@@ -439,7 +439,16 @@ window-rule {
 
 // Open these apps maximized by default (persistent "Mod+F" state).
 window-rule {
-    match app-id=r#"^zen-beta$"#
+    // Zen also needs a title match, because its secondary windows share the
+    // "zen-beta" app-id and are *parentless* toplevels — `openAboutDialog()`
+    // passes "dialog=no", so Firefox never calls set_transient_for, so niri's
+    // "windows with a parent open floating" heuristic can't see them. The regex
+    // is deliberately opt-in: a main window is titled either bare ("Zen
+    // Browser") or "<page> — Zen Browser", so requiring start-of-string or the
+    // em-dash separator admits every real browser window while rejecting
+    // "About Zen Browser" (preceded by "About "). A page *called* "About Us"
+    // still matches, since it arrives as "About Us — Zen Browser".
+    match app-id=r#"^zen-beta$"# title=r#"(?:^|— )Zen Browser( Private Browsing)?$"#
     match app-id=r#"^vesktop$"#
     match app-id=r#"^com\.stremio\.Stremio$"#
     match app-id=r#"^obsidian$"#
