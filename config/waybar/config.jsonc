@@ -131,11 +131,14 @@
     // signal, no separate watcher (this replaced the old one-shot + SIGRTMIN+9 +
     // window-title-watch.sh scheme, whose poke could be dropped/desynced).
     // restart-interval relaunches the producer if it ever exits (e.g. a crash).
+    // No "max-length" on purpose: that is a single character count shared by
+    // every bar, so the pill ends up the same physical width on a 1536px laptop
+    // panel and a 1920px monitor — proportionally shrunken on the bigger screen.
+    // window-title.sh truncates instead, scaling the cap to its own output.
     "custom/window": {
         "exec": "/home/valer/.config/waybar/scripts/window-title.sh",
         "restart-interval": 1,
         "format": "{}",
-        "max-length": 60,
         "escape": true,
         "tooltip": false,
         // Left-click  = the Overview (same as Mod+O), regardless of what is

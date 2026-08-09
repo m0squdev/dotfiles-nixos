@@ -25,11 +25,43 @@
 # workspace (so the pill follows the selection as it moves between workspaces in
 # the Overview) and otherwise take the monitor's active (visible) workspace.
 #
+# The title is also TRUNCATED here rather than by Waybar's "max-length", which is
+# one character count shared by every bar: 60 chars is the same physical width on
+# every screen, so it fills a large share of the 1536-logical-px laptop panel but
+# looks shrunken on the 1920px external monitor. Since we already know which
+# output this bar is on, we can scale the cap to it instead — see cap_for_output.
+#
 # Parsed with grep/sed/awk because jq isn't installed. Workspace objects are flat
 # so splitting on {...} is safe; window objects nest a "layout" object, hence the
 # plain-text `niri msg windows` for the title.
 
 out="${WAYBAR_OUTPUT_NAME:-}"
+
+# Characters this bar's pill may show, proportional to the monitor's LOGICAL
+# width (the pixels Waybar actually lays out in — already divided by the output's
+# scale, so a HiDPI panel isn't handed a cap meant for its native resolution).
+# The ratio is the old fixed cap on the laptop, 60 chars per 1536 px = 5/128, so
+# eDP-1 keeps exactly the width it had and HDMI-A-1 gets 75. Clamped in case an
+# output reports something absurd, and falling back to 60 when we can't tell
+# (no $WAYBAR_OUTPUT_NAME, or niri not answering).
+CAP=60
+cap_for_output() {
+    local width
+    [ -n "$out" ] || return
+
+    # `niri msg outputs`, not --json: the JSON puts the whole modes array between
+    # "name" and "logical", which is not parseable without jq.
+    width=$(niri msg outputs 2>/dev/null | awk -v o="($out)" '
+        index($0, o) { found = 1; next }
+        found && /^  Logical size:/ { split($3, a, "x"); print a[1]; exit }
+        /^Output /  { found = 0 }
+    ')
+    case "$width" in ''|*[!0-9]*) return ;; esac
+
+    CAP=$(( width * 5 / 128 ))
+    [ "$CAP" -lt 20 ] && CAP=20
+    [ "$CAP" -gt 120 ] && CAP=120
+}
 
 emit() {
     local ws sel wid title
@@ -62,6 +94,12 @@ emit() {
 
     # Empty workspace, or niri not answering — fall back to the hostname.
     [ -z "$title" ] && title=$(cat /proc/sys/kernel/hostname 2>/dev/null)
+
+    # Cut to this monitor's cap, with an ellipsis so a clipped title reads as
+    # clipped. ${var:0:n} counts characters, not bytes, so a CJK title isn't cut
+    # short mid-glyph.
+    [ "${#title}" -gt "$CAP" ] && title="${title:0:$((CAP - 1))}…"
+
     printf '%s\n' "$title"
 }
 
@@ -73,9 +111,17 @@ emit() {
 # no WindowFocusChanged (nothing holds keyboard focus in the Overview). Note
 # *WorkspaceActivated* does NOT cover it: this event reads "WorkspaceActive" +
 # "WindowChanged".
+#
+# The cap is recomputed on WorkspacesChanged / ConfigLoaded rather than on every
+# repaint: niri has no output event, but both of those fire when a monitor is
+# plugged, unplugged or rescaled — the only times the logical width can move.
 while true; do
+    cap_for_output
     emit
     niri msg --json event-stream 2>/dev/null | while IFS= read -r line; do
+        case "$line" in
+            *WorkspacesChanged*|*ConfigLoaded*) cap_for_output ;;
+        esac
         case "$line" in
             *WindowFocusChanged*|*WindowOpenedOrChanged*|*WindowClosed*|*WindowsChanged*|\
             *WorkspaceActivated*|*WorkspacesChanged*|*WorkspaceActiveWindowChanged*|\
