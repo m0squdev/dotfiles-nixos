@@ -29,6 +29,7 @@ whole desktop is themed **Catppuccin Mocha** with a mauve accent.*
 |---|---|
 | Compositor / WM | **niri** (scrollable-tiling Wayland) |
 | Status bar | **waybar** (+ custom module scripts) |
+| Bar peek over fullscreen | **top-edge-sensor** (built from source here) + `config/niri/bar-peek.sh` |
 | Notifications & quick settings | **swaync** |
 | On-screen display (volume/brightness) | **swayosd** |
 | Launcher | **fuzzel** |
@@ -101,7 +102,8 @@ dotfiles-nixos/
 │       └── hardware-configuration.nix # ⚠ generated ON that machine — not committed here
 ├── modules/
 │   ├── core/                  # boot, nix, locale, networking, users, audio, graphics
-│   ├── desktop/               # niri, gnome, fonts, input-method, theming (+ kgx patch)
+│   ├── desktop/               # niri, gnome, fonts, input-method, theming
+│   │                          #   (+ kgx patch, top-edge-sensor.c built by its own .nix)
 │   ├── hardware/              # per-machine quirks, imported only where relevant
 │   │   ├── nvidia.nix         # GTX 1650, proprietary driver
 │   │   ├── intel-graphics.nix # UHD 620 VA-API userspace

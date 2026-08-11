@@ -8,6 +8,26 @@
     "margin-top": 6,
     "margin-left": 8,
     "margin-right": 8,
+
+    // Peeking the bar over a fullscreen window — driven by ~/.config/niri/
+    // bar-peek.sh, which explains the whole mechanism. Waybar only offers two
+    // switchable states, the bar's own config ("default") and the "invisible"
+    // mode it drops into on hide, so "invisible" is redefined here as the peek:
+    // same bar, moved up to the overlay layer, which is the one layer niri does
+    // NOT draw a focused fullscreen window over.
+    //
+    // Keeping the exclusive zone means unaffected monitors don't reflow while
+    // the peek is up. NOT passthrough: the peeked bar takes clicks like any
+    // other, because top-edge-sensor deliberately vacates the bar's own pixels
+    // while the peek is up and watches the screen below it instead.
+    "modes": {
+        "invisible": { "layer": "overlay", "exclusive": true, "passthrough": false, "visible": true }
+    },
+    // Note this costs the SIGUSR2 default, which is a full reload (and that one
+    // does tear the bar down and back up, tray included).
+    "on-sigusr1": "hide",
+    "on-sigusr2": "show",
+
     "idle_inhibitor": {
         "format": "{icon}",
         "format-icons": { "activated": "󰅶", "deactivated": "󰅶" },
@@ -150,6 +170,12 @@
         "on-click-right": "/home/valer/.config/waybar/scripts/window-actions.sh"
     },
 
+    // Clicking the clock toggles swaync's control center. That panel has to be
+    // on the OVERLAY layer (set in config/swaync/config.json, which is strict
+    // JSON and can't say so itself): niri draws a focused fullscreen window over
+    // the whole top layer, so a top-layer panel opens up *behind* the fullscreen
+    // window and clicking the clock looks like it does nothing — which is how
+    // this was found, from the bar peeked over a fullscreen window.
     "clock": {
         "format": "{:%H:%M}",
         "tooltip": false,

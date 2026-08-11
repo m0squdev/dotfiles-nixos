@@ -317,6 +317,11 @@ environment {
 // event-stream directly, so there's no longer a separate watcher to spawn here.)
 spawn-at-startup "waybar"
 
+// Brings the bar back over a fullscreen window when the pointer hits the top
+// edge of the screen. Owns the top-edge-sensor process that does the noticing;
+// see the script for why this can't be done in waybar's config alone.
+spawn-at-startup "/home/valer/.config/niri/bar-peek.sh"
+
 // Notification daemon + quick-settings panel (opened from the bar or Mod+N).
 spawn-at-startup "swaync"
 
@@ -464,6 +469,32 @@ window-rule {
 window-rule {
     geometry-corner-radius 12
     clip-to-geometry true
+}
+
+// The bar while it is peeked over a fullscreen window — and ONLY then. Waybar
+// sits on the top layer normally and moves to the overlay layer for the peek
+// (see bar-peek.sh), so matching the layer is enough to scope this to the peek;
+// no extra signalling needed.
+//
+// This is here rather than in style.css because the bar cannot paint it. Its
+// 6px/8px inset is a layer-shell margin, which shrinks the surface itself, so
+// CSS has no pixels to draw in out there and a CSS shadow would be clipped away
+// at the edge. The compositor has no such limit. Without it the opaque backdrop
+// just stops short of the screen edge and reads as a bar that failed to reach
+// it; with it, the same rectangle reads as a panel floating above the video.
+//
+// The radius matches the one style.css gives the same surface, so the shadow
+// traces the corners the bar actually draws.
+layer-rule {
+    match namespace="^waybar$" layer="overlay"
+    geometry-corner-radius 16
+    shadow {
+        on
+        softness 24
+        spread 4
+        offset x=0 y=4
+        color "#00000080"
+    }
 }
 
 binds {

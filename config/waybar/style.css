@@ -12,6 +12,30 @@ window#waybar {
     color: #cdd6f4; /* text */
 }
 
+/* Peeked over a fullscreen window (see ~/.config/niri/bar-peek.sh). Normally the
+ * window background is transparent and the pills read as separate elements
+ * because the wallpaper sits behind them; over someone else's fullscreen video
+ * there is no wallpaper, just arbitrary bright frames, and the pills end up
+ * floating on top of it. So the peek gets a backdrop the ordinary bar does not.
+ *
+ * Waybar tags its window with the mode it is in, which is what makes this
+ * targetable at all: config.jsonc redefines "invisible" as the peek, so the
+ * class is on exactly when the bar is riding the overlay layer. Crust rather
+ * than base, so the base-coloured pills still read as pills against it.
+ *
+ * Opaque, not translucent: a bright frame showing through was exactly what made
+ * the pills hard to read. It cannot reach the screen edge, though — the bar's
+ * 6px/8px inset is a layer-shell margin, which shrinks the surface itself, so
+ * fullscreen video always shows in that frame. Moving the inset to CSS padding
+ * to close it does not work: GTK does not apply padding to the toplevel node,
+ * so the modules simply grew to fill the taller surface and the pills came out
+ * oversized. Hence a floating card, and a 16px radius — a size up from the 12px
+ * pills it carries — to make that read as deliberate. */
+window#waybar.mode-invisible {
+    background-color: #11111b; /* crust */
+    border-radius: 16px;
+}
+
 #window,
 #custom-window,
 #clock,
