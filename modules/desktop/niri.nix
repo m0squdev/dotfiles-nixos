@@ -3,6 +3,11 @@
 # clipboard, emoji picker). The user-level config for all of these is laid down
 # by Home Manager from this repo's config/* (see ../../home/).
 { pkgs, ... }:
+let
+  # Pointer-at-the-top-edge trigger behind the fullscreen bar peek — nothing
+  # packaged does this on niri. See ./top-edge-sensor.nix.
+  top-edge-sensor = pkgs.callPackage ./top-edge-sensor.nix { };
+in
 {
   programs.niri.enable = true;
   services.displayManager.defaultSession = "niri";
@@ -42,6 +47,7 @@
 
   environment.systemPackages = with pkgs; [
     waybar                    # status bar
+    top-edge-sensor           # bar peek trigger (run by config/niri/bar-peek.sh)
     fuzzel                    # application launcher (Mod+D)
     swaybg                    # wallpaper
     # Screen lockers. hyprlock is the primary (minimal Catppuccin Mocha lock
