@@ -19,6 +19,7 @@
     stremio-linux-shell   # Stremio media center (native GTK/webkit shell; old qt5 `stremio` was removed from nixpkgs 2026-02)
     geary                 # email client
     fragments             # GNOME BitTorrent client (GTK/libadwaita, follows the Catppuccin GTK theme)
+    komikku               # manga reader/downloader (GTK/libadwaita, follows the Catppuccin GTK theme)
     obsidian              # Markdown knowledge base / notes
     # libreoffice moved to ../../modules/apps/libreoffice.nix — it needs the
     # SAL_USE_VCLPLUGIN env var (else it's un-themed under niri), so per THE RULE
