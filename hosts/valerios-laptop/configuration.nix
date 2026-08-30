@@ -54,6 +54,7 @@
     ../../modules/apps/syncthing.nix
     ../../modules/apps/claude-desktop.nix
     ../../modules/apps/libreoffice.nix
+    ../../modules/apps/printing.nix
 
     # --- One-line apps / simple toggles (edit the list inside) ---
     ../../modules/apps/misc.nix

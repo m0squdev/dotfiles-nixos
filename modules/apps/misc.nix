@@ -10,7 +10,9 @@
 {
   # Programs / services with a NixOS module (installs + wires them up).
   programs.kdeconnect.enable = true;
-  services.printing.enable = true;   # CUPS
+  # printing (CUPS) moved to ./printing.nix — it now carries the HP drivers and
+  # an Avahi block for network-printer discovery, so per THE RULE it earned its
+  # own module.
 
   # Plain packages.
   environment.systemPackages = with pkgs; [

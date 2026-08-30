@@ -29,14 +29,21 @@ Evaluating and building the whole system needs no privileges, so check work
 this way first:
 
 ```sh
-nix build --no-link .#nixosConfigurations.valerios-nix.config.system.build.toplevel
+nix build --no-link .#nixosConfigurations.<host>.config.system.build.toplevel
 ```
 
 Only activating it needs root, and that command is the user's to run:
 
 ```sh
-sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
+sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#<host>
 ```
+
+`<host>` is **the machine you are on**, not a fixed value — run `hostname` and
+use that. Applying another host's attribute is not a no-op: it swaps in that
+host's `hardware-configuration.nix` (wrong disk UUIDs) and its hardware modules
+(e.g. `nvidia.nix` instead of `intel-graphics.nix`), which produces a generation
+that can fail to boot. Check before every rebuild, and verify a change on the
+host that has the hardware it touches.
 
 Batch changes and ask for **one** rebuild at the end rather than one per edit.
 
