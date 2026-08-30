@@ -40,6 +40,7 @@
     ../../modules/apps/claude-desktop.nix
     ../../modules/apps/libreoffice.nix
     ../../modules/apps/printing.nix
+    ../../modules/apps/papers.nix
 
     # --- One-line apps / simple toggles (edit the list inside) ---
     ../../modules/apps/misc.nix
