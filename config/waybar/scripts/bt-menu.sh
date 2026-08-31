@@ -21,11 +21,35 @@ bluetoothctl --timeout 30 scan on >/dev/null 2>&1 &
 # Stream into fuzzel through a FIFO (not a plain pipe) so we can kill the
 # producer the instant fuzzel closes — otherwise it would keep polling and the
 # command substitution would hang until the loop's timeout.
-# bluetoothctl colourises `devices` output even when it is piped, so escape
-# sequences end up glued to the device names — they render as garbage in fuzzel,
-# and the name we show has to match the name we look the MAC up by, so this must
-# be applied everywhere the list is read.
-strip_ansi() { sed 's/\x1b\[[0-9;]*m//g'; }
+
+# Every read of the device list goes through here, because `bluetoothctl devices`
+# output is not just the device list.
+#
+# It is colourised even when piped, so escape sequences end up glued to the
+# names; they render as garbage in fuzzel, and the name we show has to match the
+# name we look the MAC up by.
+#
+# Worse, bluetoothctl also prints asynchronous *events* on the same stdout for as
+# long as it is alive. This script starts its own discovery, so events arrive
+# continuously — and they are not all one-liners:
+#
+#     [CHG] Device 41:6E:0A:E9:80:B9 RSSI: 0xffffffbe (-66)
+#     [NEW] Device E0:76:BE:E5:09:BB E0-76-BE-E5-09-BB
+#     [CHG] Device 41:6E:0A:E9:80:B9 ManufacturerData.Value:
+#       07 19 01 27 20 0b 66 8f 11 00 09 23 ce 20 4e 38  ...' .f....#. N8
+#       e5 cd df 7d 2d b9 8a b5 39 17 d6                 ...}-...9..
+#
+# Read positionally as "Device <mac> <name>", an event line yields mac="Device"
+# and the rest as a name, and a ManufacturerData hexdump yields a row per line —
+# which is exactly the junk that filled the picker. So parse strictly instead:
+# anchored "Device ", then a real six-octet MAC, or the line is not device list
+# output at all. Emits "<mac> <name>"; the "Device " prefix is dropped here so
+# every caller reads $1 as the MAC.
+bt_devices() {
+    bluetoothctl devices ${1:+"$1"} 2>/dev/null \
+        | sed 's/\x1b\[[0-9;]*m//g' \
+        | sed -nE 's/^Device ([0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}) (.+)$/\1 \3/p'
+}
 
 fifo=$(mktemp -u -p "${XDG_RUNTIME_DIR:-/tmp}" bt-menu.XXXXXX)
 mkfifo "$fifo"
@@ -61,13 +85,13 @@ trap cleanup EXIT
 
   declare -A seen
   for _ in $(seq 1 50); do
-    conn=$(bluetoothctl devices Connected 2>/dev/null | awk '{print $2}' | tr '\n' ' ')
-    paired=$(bluetoothctl devices Paired 2>/dev/null | awk '{print $2}' | tr '\n' ' ')
+    conn=$(bt_devices Connected | awk '{print $1}' | tr '\n' ' ')
+    paired=$(bt_devices Paired | awk '{print $1}' | tr '\n' ' ')
     # Connected devices first so they head the list, then everything else;
     # dedup on MAC keeps the first (connected) copy. Within a poll that fixes
     # the order, and since connected devices are known before discovery finds
     # anything, they land at the top of the stream.
-    while read -r _ mac name; do
+    while read -r mac name; do
       [ -z "$mac" ] && continue
       [ -n "${seen[$mac]}" ] && continue
       # Skip devices BlueZ has no name for — it falls back to the address with
@@ -88,8 +112,7 @@ trap cleanup EXIT
       else
         printf '   %s\n' "$name"
       fi
-    done < <({ bluetoothctl devices Connected; bluetoothctl devices; } 2>/dev/null \
-             | strip_ansi | awk '!dup[$2]++')
+    done < <({ bt_devices Connected; bt_devices; } | awk '!dup[$1]++')
     sleep 0.6
   done
 } > "$fifo" &
@@ -105,12 +128,12 @@ name=$(printf '%s' "$chosen" | sed -E 's/^[●○] +//; s/^ +//')
 
 # Re-resolve the display name back to a MAC (no IDs are shown in the rows).
 # First exact-name match wins; duplicate names would be ambiguous.
-mac=$(bluetoothctl devices 2>/dev/null | strip_ansi | while read -r _ m rest; do
+mac=$(bt_devices | while read -r m rest; do
   [ "$rest" = "$name" ] && { printf '%s' "$m"; break; }
 done)
 [ -z "$mac" ] && exit 0
 
-if bluetoothctl devices Connected 2>/dev/null | grep -qF "$mac"; then
+if bt_devices Connected | grep -qF "$mac"; then
   bluetoothctl disconnect "$mac"
 else
   bluetoothctl pair "$mac"  >/dev/null 2>&1
