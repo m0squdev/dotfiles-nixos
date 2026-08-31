@@ -471,31 +471,27 @@ window-rule {
     clip-to-geometry true
 }
 
-// The bar while it is peeked over a fullscreen window — and ONLY then. Waybar
-// sits on the top layer normally and moves to the overlay layer for the peek
-// (see bar-peek.sh), so matching the layer is enough to scope this to the peek;
-// no extra signalling needed.
+// NO layer-rule for the peeked bar (waybar on the overlay layer), deliberately.
 //
-// This is here rather than in style.css because the bar cannot paint it. Its
-// 6px/8px inset is a layer-shell margin, which shrinks the surface itself, so
-// CSS has no pixels to draw in out there and a CSS shadow would be clipped away
-// at the edge. The compositor has no such limit. Without it the opaque backdrop
-// just stops short of the screen edge and reads as a bar that failed to reach
-// it; with it, the same rectangle reads as a panel floating above the video.
+// There was one here: geometry-corner-radius plus a soft shadow (#00000080,
+// softness 24, spread 4), so the backdrop would read as a panel floating above
+// the video rather than as a bar that failed to reach the screen edge. The
+// compositor is the only thing that can draw it — the bar's 6px/8px inset is a
+// layer-shell margin, so it shrinks the surface and CSS has no pixels out there.
 //
-// The radius matches the one style.css gives the same surface, so the shadow
-// traces the corners the bar actually draws.
-layer-rule {
-    match namespace="^waybar$" layer="overlay"
-    geometry-corner-radius 16
-    shadow {
-        on
-        softness 24
-        spread 4
-        offset x=0 y=4
-        color "#00000080"
-    }
-}
+// It was also the "black edges" around the peeked bar, which is not obvious
+// from the numbers: 50% black at softness 24 is subtle in isolation, but the
+// video under a bar is usually dark, and the shadow is proportionally huge
+// against it. Measured off a frame of a night scene — video away from the bar
+// (20,18,43), immediately below it (14,12,30), just past the pill's rounded end
+// (14,13,29). A third of the brightness gone, over a 24px halo, hugging the
+// shape. At the ends it is worst, because the shadow wraps the curve from two
+// sides and pools there.
+//
+// So it cannot coexist with wanting no dark rim, and the rim lost. If it ever
+// comes back it wants a much lower alpha and a smaller softness, judged against
+// a DARK frame rather than a bright one — on a bright frame it is invisible,
+// which is how it survived this long.
 
 binds {
     // Keys consist of modifiers separated by + signs, followed by an XKB key name

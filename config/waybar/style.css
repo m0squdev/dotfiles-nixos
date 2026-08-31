@@ -12,28 +12,46 @@ window#waybar {
     color: #cdd6f4; /* text */
 }
 
-/* Peeked over a fullscreen window (see ~/.config/niri/bar-peek.sh). Normally the
- * window background is transparent and the pills read as separate elements
- * because the wallpaper sits behind them; over someone else's fullscreen video
- * there is no wallpaper, just arbitrary bright frames, and the pills end up
- * floating on top of it. So the peek gets a backdrop the ordinary bar does not.
+/* Peeked over a fullscreen window (see ~/.config/niri/bar-peek.sh): the bar gets
+ * a backdrop it does not have normally, because over someone else's video there
+ * is no wallpaper behind the pills, just arbitrary frames. Waybar tags its
+ * window with the mode it is in, which is what makes this targetable —
+ * config.jsonc redefines "invisible" as the peek, so .mode-invisible is on
+ * exactly while the bar rides the overlay layer.
  *
- * Waybar tags its window with the mode it is in, which is what makes this
- * targetable at all: config.jsonc redefines "invisible" as the peek, so the
- * class is on exactly when the bar is riding the overlay layer. Crust rather
- * than base, so the base-coloured pills still read as pills against it.
+ * Crust, so the base-coloured module pills stand off it and you can still see
+ * which parts of the bar are clickable. 17px is half the bar's 34px height
+ * (config.jsonc), so the ends are exact semicircles — a stadium, not a rounded
+ * rectangle.
  *
- * Opaque, not translucent: a bright frame showing through was exactly what made
- * the pills hard to read. It cannot reach the screen edge, though — the bar's
- * 6px/8px inset is a layer-shell margin, which shrinks the surface itself, so
- * fullscreen video always shows in that frame. Moving the inset to CSS padding
- * to close it does not work: GTK does not apply padding to the toplevel node,
- * so the modules simply grew to fill the taller surface and the pills came out
- * oversized. Hence a floating card, and a 16px radius — a size up from the 12px
- * pills it carries — to make that read as deliberate. */
+ * THE 0.99 ALPHA IS LOAD-BEARING. It is not a nudged shade and it must not be
+ * "tidied" to a flat #11111b, which is visually identical and reintroduces the
+ * bug it exists to dodge:
+ *
+ *   GTK3 derives a window's opaque region from the background COLOUR alone and
+ *   ignores border-radius — gtk_css_style_render_background_is_opaque() does
+ *   nothing but check alpha >= 1.0. At alpha 1 it therefore tells the compositor
+ *   the whole RECTANGLE is opaque, corners included, while only painting the
+ *   rounded shape into it. niri believes the hint, skips compositing whatever is
+ *   behind the two rounded ends, and the buffer's untouched corner pixels scan
+ *   out BLACK. At 0.99 the hint is not set and the corners composite normally.
+ *
+ * This cost an entire evening because it is INVISIBLE TO SCREENSHOTS: niri's
+ * screenshot path blends correctly, so `niri msg action screenshot-screen`
+ * returns the video showing cleanly through those corners while the physical
+ * display shows black wedges. Repeated pixel diffs "proved" there was no problem
+ * for hours. Do not try to verify this one from a capture — look at the screen.
+ *
+ * It also explains a trail of dead ends: the black survived a flat card, a
+ * vertical fade, an end fade and a true stadium, because every one of those was
+ * still alpha 1. The only variant that ever looked right was the one with no
+ * background at all, which sets no opaque region either.
+ *
+ * base.kdl deliberately carries no matching layer-rule: a compositor shadow out
+ * past this was measurably the separate "black edges" around the whole bar. */
 window#waybar.mode-invisible {
-    background-color: #11111b; /* crust */
-    border-radius: 16px;
+    background-color: rgba(17, 17, 27, 0.99); /* crust — 0.99, NOT #11111b; see above */
+    border-radius: 17px;                      /* half the 34px height -> a true pill */
 }
 
 #window,
