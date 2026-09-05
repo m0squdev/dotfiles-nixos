@@ -54,15 +54,14 @@ in
 
     programs.sonora.enable = true;
 
-    # ONLY theme_overrides is pinned here, deliberately. Upstream's module
-    # merges whatever `settings` names into ~/.config/sonora/settings.json on
-    # every switch AND re-merges it on every launch, so any key set here stops
+    # What is pinned here is re-asserted, and ONLY what is pinned. Upstream's
+    # module merges whatever `settings` names into ~/.config/sonora/settings.json
+    # on every switch AND re-merges it on every launch, so a key set here stops
     # sticking when changed in Sonora's own settings screen (the same trap as
-    # config/fcitx5/profile, except opt-in). Keeping the block down to the
-    # palette leaves every other preference — provider, gapless, font, startup
-    # screen, volume — live and editable in the UI. Add a key only when you want
-    # it re-asserted; `provider` ("spotify" by default, or "youtube") is the one
-    # most likely to be worth pinning.
+    # config/fcitx5/profile, except opt-in) — which is exactly what you want for
+    # a preference that should survive a reinstall, and exactly what you do not
+    # want for one you like to flip. Everything omitted — provider, gapless,
+    # font, startup screen, volume — stays live and editable in the UI.
     #
     # Nothing else needs pinning to hold the theme, because overrides are the
     # LAST word in Theme::for_look: the base theme is built from the selected
@@ -79,50 +78,65 @@ in
     # ones below carry alpha that the stock dark theme also uses. Roles are
     # mapped against Theme::dark() — e.g. its `primary` is white, the CTA
     # colour, so it becomes mauve rather than anything literally white.
-    programs.sonora.settings.appearance.theme_overrides = with mocha; {
-      background = base;
-      foreground = text;
-      border = surface0;
-      muted = surface0;
-      overlay = "${crust}8c"; # scrim; 0x8c alpha kept from the dark theme
-      overlay_foreground = text;
-      muted_foreground = overlay1;
+    programs.sonora.settings = {
+      # "Keep playing when closed" — the tray_row switch. Upstream defaults it
+      # ON, so closing the window only hides it and playback carries on in the
+      # tray. Off means the close button actually quits.
+      close_to_tray = false;
 
-      # Buttons and other raised surfaces, resting → hover → pressed.
-      secondary = surface0;
-      secondary_hover = surface1;
-      secondary_active = surface2;
+      # "Window controls" — draw minimise/maximise/close in Sonora's own title
+      # bar. Off because niri has no use for them: it is a tiling compositor
+      # with no floating close affordance to match, and the keybinds in
+      # config/niri/base.kdl already cover close and fullscreen. This also makes
+      # the "Controls side" setting inert (its row keys off window_controls),
+      # so controls_on_left is left alone rather than pinned to a moot value.
+      appearance.window_controls = false;
 
-      # The accent. primary_foreground is what sits ON it, hence a dark crust
-      # rather than the light text used everywhere else. primary_hover is the
-      # one colour here that is off-palette: Catppuccin has no second mauve, so
-      # it is mauve lightened just enough to register as a hover.
-      primary = mauve;
-      primary_foreground = crust;
-      primary_hover = "#d5b3f9";
+      appearance.theme_overrides = with mocha; {
+        background = base;
+        foreground = text;
+        border = surface0;
+        muted = surface0;
+        overlay = "${crust}8c"; # scrim; 0x8c alpha kept from the dark theme
+        overlay_foreground = text;
+        muted_foreground = overlay1;
 
-      # Destructive actions. The stock theme uses a dark red plate with pale
-      # text; Catppuccin inverts that — a light red plate with dark text.
-      danger = red;
-      danger_foreground = crust;
-      danger_hover = maroon;
+        # Buttons and other raised surfaces, resting → hover → pressed.
+        secondary = surface0;
+        secondary_hover = surface1;
+        secondary_active = surface2;
 
-      popover = mantle;
-      popover_foreground = text;
-      progress_bar = mauve;
-      selection = "${mauve}4d"; # ~30% mauve behind selected text
+        # The accent. primary_foreground is what sits ON it, hence a dark crust
+        # rather than the light text used everywhere else. primary_hover is the
+        # one colour here that is off-palette: Catppuccin has no second mauve,
+        # so it is mauve lightened just enough to register as a hover.
+        primary = mauve;
+        primary_foreground = crust;
+        primary_hover = "#d5b3f9";
 
-      sidebar = mantle; # recessed against the base-coloured content area
-      sidebar_accent = surface0;
-      sidebar_border = surface0;
-      title_bar_border = surface0;
+        # Destructive actions. The stock theme uses a dark red plate with pale
+        # text; Catppuccin inverts that — a light red plate with dark text.
+        danger = red;
+        danger_foreground = crust;
+        danger_hover = maroon;
 
-      table_head = "${mantle}cc";
-      table_head_foreground = overlay0; # dimmer than muted_foreground, as stock
-      table_row_border = "${surface0}b3";
-      table_hover = surface0;
-      table_active = "${mauve}33";
-      table_active_border = mauve;
+        popover = mantle;
+        popover_foreground = text;
+        progress_bar = mauve;
+        selection = "${mauve}4d"; # ~30% mauve behind selected text
+
+        sidebar = mantle; # recessed against the base-coloured content area
+        sidebar_accent = surface0;
+        sidebar_border = surface0;
+        title_bar_border = surface0;
+
+        table_head = "${mantle}cc";
+        table_head_foreground = overlay0; # dimmer than muted_foreground, as stock
+        table_row_border = "${surface0}b3";
+        table_hover = surface0;
+        table_active = "${mauve}33";
+        table_active_border = mauve;
+      };
     };
 
     # Sonora declares itself a handler for spotify: links (its desktop entry
