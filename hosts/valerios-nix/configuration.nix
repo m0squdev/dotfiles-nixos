@@ -41,6 +41,7 @@
     ../../modules/apps/libreoffice.nix
     ../../modules/apps/printing.nix
     ../../modules/apps/papers.nix
+    ../../modules/apps/sonora.nix
 
     # --- One-line apps / simple toggles (edit the list inside) ---
     ../../modules/apps/misc.nix
