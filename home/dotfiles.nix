@@ -59,6 +59,22 @@
   home.file.".local/share/gtksourceview-5/styles/catppuccin-mocha.xml".source =
     ../local/share/gtksourceview-5/styles/catppuccin-mocha.xml;
 
+  # Nautilus' "New Document" submenu is literally a listing of ~/Templates —
+  # empty directory, no submenu — so one empty file there is the whole feature.
+  # (XDG_TEMPLATES_DIR in ~/.config/user-dirs.dirs is the default $HOME/Templates;
+  # this hardcodes that path, so move it there and here together.)
+  #
+  # Deliberately no extension, so the menu entry and the file it makes are both
+  # plain "Empty Text File". The cost is that a zero-byte file with no extension
+  # has nothing for shared-mime-info to go on and types as application/x-zerosize
+  # rather than text/plain — nothing is registered to open that, so a fresh one
+  # may not launch an editor until it has content. Giving this file a single
+  # newline is the fix if that bites; it stays visually empty and sniffs as text.
+  #
+  # Nautilus copies templates with G_FILE_COPY_TARGET_DEFAULT_PERMS, so the new
+  # file gets normal permissions rather than inheriting 0444 from the store.
+  home.file."Templates/Empty Text File".text = "";
+
   # Wallpaper — referenced by niri (swaybg) and hyprlock.
   home.file.".local/share/backgrounds/wall.jpg".source =
     ../assets/wallpapers/wall.jpg;
