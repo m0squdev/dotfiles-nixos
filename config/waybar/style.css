@@ -74,6 +74,33 @@ window#waybar.mode-invisible {
     margin: 4px 3px;
 }
 
+/* Clock — the one module with a wider margin than the 3px above, and it is not
+   cosmetic: it is how the bar reserves a fixed empty gutter on BOTH sides of the
+   centre.
+
+   The clock is Waybar's centre widget, and GTK sizes that widget by its own
+   preferred width — margins included — before deciding where the left and right
+   boxes may reach. So a 48px horizontal margin turns into 48px of space that
+   neither neighbour can occupy: modules-right stops 48px short of the clock pill
+   however far the tray drawer expands on hover, and the window title stops 48px
+   short of it from the left. The pill itself doesn't move or change size (margin
+   is transparent) — it is still centred on the bar.
+
+   Only the right half is enforced HERE. GTK will happily let a too-long label
+   grow through the gutter and shove the clock off-centre, so the left half is
+   held by scripts/window-title.sh capping the title instead — its CLOCK_GAP
+   constant is this number and the two must be changed together.
+
+   Overshoot is the one thing this can't fix: with enough tray icons revealed the
+   right box runs out of room and the clock does get pushed. Waybar has no
+   scrollable container to fall back on (every module is a plain GtkBox), so the
+   gutter is the budget, not a scroll viewport — it takes ~7 simultaneous tray
+   icons on the laptop panel to spend it. */
+#clock {
+    margin-left: 48px;
+    margin-right: 48px;
+}
+
 /* Tray: one PADDED pill per icon, matching the other modules. The SNI item itself
    (#tray > *, a GtkEventBox) ignores its own padding/margin/min-width — but its
    CHILD, the icon image (#tray > * > *), DOES honour margin, and the EventBox
@@ -123,16 +150,30 @@ window#waybar.mode-invisible {
        glyph-hugging button by the glyph's advance width, which rounds differently
        under fractional output scale — so the pills came out narrower on the
        scaled laptop than on the scale-1 desktop. A fixed min-width renders the
-       same at any scale, keeping both hosts identical. */
-    min-width: 28px;
+       same at any scale, keeping both hosts identical.
+
+       THE VALUE IS QUANTISED, not just fixed. GTK3 applies min-width to the
+       CONTENT box, so a dot occupies 32 + 6×2 padding + 2×2 margin = 48px —
+       exactly six 8px character cells. That divisibility is load-bearing:
+       scripts/window-title.sh pays for these dots out of the same budget it
+       spends on title text, and it can only spend that budget in whole
+       characters. At the old 28px/44px pitch every added workspace left a 4px
+       remainder the cap couldn't use, so the title pill's right edge twitched
+       back and forth by 4px as workspaces came and went. Keep any replacement a
+       multiple of 8 once padding and margin are added, and mirror it in that
+       script's WS_BUTTON. */
+    min-width: 32px;
     margin: 2px 2px;
     border-radius: 999px;
     background: transparent;
 }
+/* No padding override here on purpose: the active dot used to pad 8px a side
+   against the others' 6px, which made it 4px wider and broke the 48px pitch for
+   whichever dot happened to be active. It keeps its old 44px width anyway — the
+   4px it loses in padding is the 4px min-width just gained. */
 #workspaces button.active {
     color: #1e1e2e;
     background-color: #cba6f7; /* mauve pill */
-    padding: 0 8px;
 }
 #workspaces button.urgent {
     color: #1e1e2e;
