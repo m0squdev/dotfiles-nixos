@@ -158,7 +158,7 @@
     // script truncates instead, sizing the cap from its own output's width MINUS
     // that bar's dots, so the pill's right edge stays put as workspaces come and
     // go and always stops the same distance short of the clock. That distance is
-    // the gutter style.css gives #clock; see both files before retuning it.
+    // the gutter style.css gives .modules-center; see both files before retuning.
     "custom/window": {
         "exec": "/home/valer/.config/waybar/scripts/window-title.sh",
         "restart-interval": 1,

@@ -55,7 +55,7 @@ WS_CHROME=14      # style.css #workspaces padding (4×2) + margin (3×2)
 # divide by the cell width, and change the two together.
 WS_BUTTON=48
 CLOCK_CHARS=5     # the clock renders "HH:MM"
-CLOCK_GAP=48      # style.css #clock margin-left/right — see below
+CLOCK_GAP=48      # style.css .modules-center margin-left/right — see below
 CHAR_W=8          # advance width of one JetBrainsMono glyph at font-size 13px
 
 # THE POINT OF ALL THIS: the pill's right edge must not move when the workspace
@@ -67,10 +67,12 @@ CHAR_W=8          # advance width of one JetBrainsMono glyph at font-size 13px
 # left half once the dots, the inter-module gaps and the pill's own padding are
 # taken out, so the pill ends in the same place whatever the workspace count.
 #
-# CLOCK_GAP is the reserved gutter either side of the clock, and it is enforced
-# twice over: style.css gives #clock that much horizontal MARGIN, which is what
-# keeps the modules-right box out of it, and this cap is what keeps the title out
-# of it from the left. The two numbers must agree, hence the constant here.
+# CLOCK_GAP is the reserved gutter either side of the clock PILL, and it is
+# enforced twice over: style.css gives .modules-center that much horizontal
+# MARGIN, which is what keeps the modules-right box out of it, and this cap is
+# what keeps the title out of it from the left. The two numbers must agree, hence
+# the constant here. It is on the centre BOX rather than on #clock so that the
+# clock's clickable area stays the size of its pill; style.css says why.
 #
 # Clamped in case an output reports something absurd, and falling back to the old
 # fixed 60 when we can't tell (no $WAYBAR_OUTPUT_NAME, or niri not answering).

@@ -74,9 +74,8 @@ window#waybar.mode-invisible {
     margin: 4px 3px;
 }
 
-/* Clock — the one module with a wider margin than the 3px above, and it is not
-   cosmetic: it is how the bar reserves a fixed empty gutter on BOTH sides of the
-   centre.
+/* Clock — the bar reserves a fixed empty gutter on BOTH sides of the centre, and
+   it is not cosmetic.
 
    The clock is Waybar's centre widget, and GTK sizes that widget by its own
    preferred width — margins included — before deciding where the left and right
@@ -85,6 +84,22 @@ window#waybar.mode-invisible {
    however far the tray drawer expands on hover, and the window title stops 48px
    short of it from the left. The pill itself doesn't move or change size (margin
    is transparent) — it is still centred on the bar.
+
+   THE MARGIN BELONGS ON THE BOX, NOT ON #clock. Waybar builds every module as a
+   GtkLabel inside a Gtk::EventBox and puts the CSS id on the LABEL (ALabel.cpp:
+   `label_.set_name(name)`, then `event_box_.add(label_)`), and the EventBox is
+   what carries BUTTON_PRESS_MASK and the enter/leave handlers (AModule.cpp). An
+   EventBox owns a real GdkWindow spanning its whole allocation, and a child's
+   margin lies INSIDE that allocation — so hanging the gutter off #clock left the
+   pill drawn where it was but grew the clock's clickable and hoverable area 96px
+   wider than the pill you can see. .modules-center is a plain Gtk::Box (bar.cpp)
+   with no window of its own, so its margin is dead to input.
+
+   Moving it costs nothing in layout: a child's margins count towards its parent's
+   preferred width either way, so set_center_widget reserves the same pill + 96px.
+   #clock's own horizontal margin does have to go to 0 for that to stay exact —
+   otherwise the 3px from the rule above is added on top of the box's 48px, and
+   the gutter no longer matches window-title.sh's CLOCK_GAP.
 
    Only the right half is enforced HERE. GTK will happily let a too-long label
    grow through the gutter and shove the clock off-centre, so the left half is
@@ -96,9 +111,13 @@ window#waybar.mode-invisible {
    scrollable container to fall back on (every module is a plain GtkBox), so the
    gutter is the budget, not a scroll viewport — it takes ~7 simultaneous tray
    icons on the laptop panel to spend it. */
-#clock {
+.modules-center {
     margin-left: 48px;
     margin-right: 48px;
+}
+#clock {
+    margin-left: 0;
+    margin-right: 0;
 }
 
 /* Tray: one PADDED pill per icon, matching the other modules. The SNI item itself
