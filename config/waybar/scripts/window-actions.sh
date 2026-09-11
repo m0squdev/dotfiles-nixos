@@ -13,6 +13,14 @@
 set -u
 
 menu() { fuzzel --dmenu "$@"; }   # Catppuccin Mocha look comes from fuzzel.ini
+notify_transient() {
+    gdbus call --session \
+        --dest org.freedesktop.Notifications \
+        --object-path /org/freedesktop/Notifications \
+        --method org.freedesktop.Notifications.Notify \
+        "Waybar" 0 "${3:-}" "$1" "${2:-}" "[]" "{'transient': <true>, 'desktop-entry': <'waybar'>}" 2500 \
+        >/dev/null 2>&1
+}
 
 # 1. Focused window's app_id (empty when nothing is focused).
 app_id=$(niri msg focused-window 2>/dev/null \
@@ -47,7 +55,7 @@ if [ -z "$desktop" ]; then
 fi
 
 if [ -z "$desktop" ]; then
-    printf '%s\n' "(no .desktop file for $app_id)" | menu --prompt "$app_id > " --lines 1 --width 44 >/dev/null
+    notify_transient "$app_id" "No .desktop file found"
     exit 0
 fi
 
@@ -60,6 +68,12 @@ app_name=$(awk '
     inentry && /^Name=/  { print substr($0, 6); exit }
 ' "$desktop")
 [ -z "$app_name" ] && app_name="$app_id"
+
+app_icon=$(awk '
+    /^\[Desktop Entry\]/ { inentry=1; next }
+    /^\[/                { inentry=0 }
+    inentry && /^Icon=/  { print substr($0, 6); exit }
+' "$desktop")
 
 # 4. Collect the app's desktop actions as  Name<TAB>Exec  lines, in the ORDER the
 #    [Desktop Entry] Actions= key declares (the spec's canonical order) — NOT the
@@ -88,7 +102,7 @@ actions=$(awk '
 ' "$desktop")
 
 if [ -z "$actions" ]; then
-    printf '%s\n' "(no actions for $app_name)" | menu --prompt "$app_name > " --lines 1 --width 44 >/dev/null
+    notify_transient "$app_name" "No actions available" "$app_icon"
     exit 0
 fi
 
