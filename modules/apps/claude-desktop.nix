@@ -56,6 +56,19 @@ in
 {
   environment.systemPackages = [ claude-desktop-extra ];
 
+  # Claude Desktop spawns a self-downloaded `claude` CLI binary (at
+  # ~/.config/Claude/claude-code/<ver>/claude) that is a dynamically linked
+  # generic-Linux ELF. NixOS has no dynamic linker at the standard FHS path, so
+  # the binary dies with "Could not start dynamically linked executable".
+  #
+  # nix-ld installs a stub ld at /lib64/ld-linux-x86-64.so.2 that resolves
+  # libraries from nix-ld.libraries. patchelf is not viable here because Claude
+  # Desktop auto-updates the binary and any patch would be overwritten.
+  programs.nix-ld.enable = true;
+  programs.nix-ld.libraries = with pkgs; [
+    stdenv.cc.cc.lib  # libstdc++.so.6, needed by the Claude Code Node binary
+  ];
+
   # Draw the window frame with the SYSTEM decorations (so niri's own border /
   # focus ring frames it, matching every other window) instead of the app's
   # integrated titlebar. `claude-desktop --diagnose` reports the current state as
