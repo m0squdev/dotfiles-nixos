@@ -46,11 +46,58 @@ let
   # This is pinned to the exact rev in ../../flake.nix; bumping that rev should
   # bring a corrected upstream hash, at which point delete this whole override.
   claude-desktop-extra =
-    inputs.claude-desktop-extra.packages.${system}.claude-desktop-extra.overrideAttrs (_: {
+    inputs.claude-desktop-extra.packages.${system}.claude-desktop-extra.overrideAttrs (old: {
       src = pkgs.fetchurl {
         url = "https://github.com/patrickjaja/claude-desktop-extra/releases/download/v1.24012.9/claude-desktop-1.24012.9-linux.tar.gz";
         hash = "sha256-usk37SSOMpH5EpCmdPfJRLQ0EC+J3WXjF3Mtg/WU/iI=";
       };
+
+      # node-pty RPATH — without this, Claude Code inside the app cannot open a
+      # shell at all ("startShellPty" fails and no command ever runs).
+      #
+      # The pty host is an ELECTRON_RUN_AS_NODE child that `require`s the
+      # vendored node-pty, whose native half is the prebuilt
+      # app.asar.unpacked/.../prebuilds/linux-x64/pty.node. That prebuild is a
+      # generic-Linux ELF with an EMPTY RPATH and DT_NEEDED libstdc++.so.6.
+      # Nothing supplies it: Electron/Chromium statically bundles its own libc++
+      # and does NOT link libstdc++ (the binary's DT_NEEDED has libgcc_s and
+      # libssp only), and upstream's wrapper puts just libsecret on
+      # LD_LIBRARY_PATH. So dlopen fails with "libstdc++.so.6: cannot open
+      # shared object file".
+      #
+      # That error is then SWALLOWED: node-pty's loadNativeModule() tries six
+      # candidate paths and rethrows only the last one's failure, so the log
+      # shows the misleading "Cannot find module './prebuilds/linux-x64/pty.node'"
+      # — a path that never exists — rather than the missing library.
+      #
+      # Fixed here on the library itself, not on LD_LIBRARY_PATH: upstream
+      # deliberately keeps that variable minimal and SUFFIXED so it cannot
+      # shadow libraries for the app's children (MCP servers, the claude CLI,
+      # qemu), and an RPATH on the one broken .node leaks into nothing.
+      #
+      # `programs.nix-ld` below does NOT cover this. nix-ld only serves binaries
+      # executed through the stub /lib64 loader; this is a dlopen from inside an
+      # already-running nixpkgs-built Electron, which uses its own loader.
+      #
+      # Appended to upstream's postFixup so its libsecret RPATH tripwire (issue
+      # #206) still runs. `dontPatchELF = true` upstream only disables the
+      # automatic shrink hook — calling patchelf explicitly is still fine, and
+      # it is already in nativeBuildInputs.
+      postFixup = (old.postFixup or "") + ''
+        pty=$out/lib/claude-desktop/resources/app.asar.unpacked/node_modules/node-pty/prebuilds/linux-x64/pty.node
+        if [ ! -e "$pty" ]; then
+          echo "ERROR: node-pty prebuild missing at $pty" >&2
+          echo "Upstream moved or dropped it; re-audit this override." >&2
+          exit 1
+        fi
+        chmod u+w "$pty"
+        patchelf --add-rpath ${pkgs.stdenv.cc.cc.lib}/lib "$pty"
+        if ldd "$pty" | grep "not found"; then
+          echo "ERROR: pty.node still has unresolved libraries (see above)." >&2
+          exit 1
+        fi
+        echo "pty.node RPATH tripwire: OK (libstdc++ reachable)"
+      '';
     });
 in
 {
