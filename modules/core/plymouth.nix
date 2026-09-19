@@ -9,12 +9,16 @@
 # `boot.plymouth.theme` + `themePackages` if that ever changes.
 #
 # What IS machine-specific is whether the real GPU's DRM driver goes into the
-# initrd, so the splash comes up at the final resolution instead of starting on
-# the EFI framebuffer (simpledrm) and flipping when the driver binds in stage 2.
-# That decision belongs to whichever vendor module the host imports, and the two
-# went opposite ways on it for a reason worth reading before copying either:
-# ../hardware/intel-graphics.nix does it (i915 is a few MB),
-# ../hardware/nvidia.nix explicitly does not (the blob is ~150 MB of initrd).
+# initrd, and on valerios-desktop that turned out to be the difference between a
+# splash and a black screen rather than a nicety. Both vendor modules now do it,
+# for very different prices — ../hardware/intel-graphics.nix for a few MB,
+# ../hardware/nvidia.nix for ~150 MB and a generation cap. The measurement that
+# forced the second one is written up there; read it before undoing either.
+#
+# Worth knowing if you ever debug this again: Plymouth is never the late part.
+# It starts ~2.8s in, inside the initrd, as soon as there is any DRM device. If
+# the screen is black anyway, the question is which device the monitor is
+# actually scanning out — not when Plymouth ran.
 { ... }:
 {
   boot.plymouth.enable = true;   # also appends `splash` to boot.kernelParams
@@ -35,7 +39,7 @@
   boot.initrd.verbose = false;
 
   # Deliberately NOT touched here: boot.loader.timeout. systemd-boot's generation
-  # menu counts down (5s) before any of this runs, so the splash still comes
-  # after the usual list. Set it to 0 in ./boot.nix to go straight to the splash;
-  # with systemd-boot the menu stays reachable by holding Space at power-on.
+  # menu counts down before any of this runs, so the splash still comes after the
+  # usual list. Set it to 0 in ./boot.nix to go straight to the splash; with
+  # systemd-boot the menu stays reachable by holding Space at power-on.
 }
