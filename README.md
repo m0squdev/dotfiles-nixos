@@ -101,7 +101,7 @@ dotfiles-nixos/
 │       ├── configuration.nix
 │       └── hardware-configuration.nix # ⚠ machine-specific: REGENERATE on other machines
 ├── modules/
-│   ├── core/                  # boot, nix, locale, networking, users, audio, graphics
+│   ├── core/                  # boot, plymouth, nix, locale, networking, users, audio, graphics
 │   ├── desktop/               # niri, gnome, fonts, input-method, theming
 │   │                          #   (+ kgx patch, top-edge-sensor.c built by its own .nix)
 │   ├── hardware/              # per-machine quirks, imported only where relevant
