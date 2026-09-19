@@ -1,6 +1,6 @@
 # Host: valerios-laptop (HP Laptop 14s-dq0xxx) — composition root.
 #
-# Same job as ../valerios-nix/configuration.nix: COMPOSE modules and declare
+# Same job as ../valerios-desktop/configuration.nix: COMPOSE modules and declare
 # what is unique to THIS machine. What differs from the desktop:
 #
 #   - Intel UHD 620 iGPU and no discrete card, so ../../modules/hardware/nvidia.nix

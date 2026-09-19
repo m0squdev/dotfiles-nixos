@@ -90,7 +90,7 @@
       #  since the output names match their hostnames.)
       nixosConfigurations = {
         # Desktop: NVIDIA GTX 1650.
-        valerios-nix = mkHost ./hosts/valerios-nix/configuration.nix;
+        valerios-desktop = mkHost ./hosts/valerios-desktop/configuration.nix;
 
         # HP Laptop 14s-dq0xxx: Intel UHD 620, battery/lid/backlight.
         valerios-laptop = mkHost ./hosts/valerios-laptop/configuration.nix;

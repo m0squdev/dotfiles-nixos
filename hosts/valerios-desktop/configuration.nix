@@ -1,4 +1,4 @@
-# Host: valerios-nix (desktop) — composition root.
+# Host: valerios-desktop (desktop) — composition root.
 #
 # This file only COMPOSES modules and declares what is unique to THIS machine.
 # To drop a feature or app from this host, delete its import line below (or, for
@@ -6,7 +6,7 @@
 # laptop — gets its own hosts/<name>/configuration.nix importing the subset it
 # wants, plus its own generated hardware-configuration.nix.
 #
-# Build:  sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-nix
+# Build:  sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#valerios-desktop
 { ... }:
 {
   imports = [
@@ -47,7 +47,7 @@
     ../../modules/apps/misc.nix
   ];
 
-  networking.hostName = "valerios-nix";
+  networking.hostName = "valerios-desktop";
 
   # --- niri display layout (this host only) ---------------------------------
   # niri's entry point is ~/.config/niri/config.kdl. The cross-host config lives

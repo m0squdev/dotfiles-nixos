@@ -16,6 +16,6 @@
   home.homeDirectory = "/home/valer";
 
   # Matches the system's release; do not bump casually (see the note on
-  # system.stateVersion in ../hosts/valerios-nix/configuration.nix).
+  # system.stateVersion in ../hosts/valerios-desktop/configuration.nix).
   home.stateVersion = "26.05";
 }

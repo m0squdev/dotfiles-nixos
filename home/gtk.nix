@@ -29,7 +29,7 @@
     # but apps that consult dconf instead — notably LibreOffice's gtk3 VCL plugin,
     # which the nixpkgs wrapper wires to dconf through GIO_EXTRA_MODULES — read
     # THIS key, whose schema default is "Adwaita", and so render un-themed. Set it
-    # here so both theming paths agree. (On valerios-nix this key had been set
+    # here so both theming paths agree. (On valerios-desktop this key had been set
     # imperatively via `gsettings`, so LibreOffice happened to be themed there but
     # not on a clean apply of the same config — this makes it uniform.)
     gtk-theme = "catppuccin-mocha-mauve-standard+normal";

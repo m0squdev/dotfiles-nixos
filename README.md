@@ -53,7 +53,7 @@ identically — same nixpkgs, same Home Manager wiring — and a host is one lin
 
 ```nix
 nixosConfigurations = {
-  valerios-nix = mkHost ./hosts/valerios-nix/configuration.nix;
+  valerios-desktop = mkHost ./hosts/valerios-desktop/configuration.nix;
   valerios-laptop = mkHost ./hosts/valerios-laptop/configuration.nix;
 };
 ```
@@ -61,7 +61,7 @@ nixosConfigurations = {
 Everything that differs is a module under `modules/hardware/` that the other
 host simply doesn't import:
 
-| | `valerios-nix` | `valerios-laptop` |
+| | `valerios-desktop` | `valerios-laptop` |
 |---|---|---|
 | Machine | desktop | HP Laptop 14s-dq0xxx |
 | CPU | Intel | Intel i5-8265U (Whiskey Lake-U) |
@@ -94,12 +94,12 @@ dotfiles-nixos/
 ├── flake.lock                 # exact input versions (reproducibility)
 ├── CONTRIBUTING.md            # repo layout + the "one line vs own module" rule
 ├── hosts/
-│   ├── valerios-nix/          # desktop
+│   ├── valerios-desktop/      # desktop
 │   │   ├── configuration.nix          # composition root: imports modules + host-only settings
 │   │   └── hardware-configuration.nix # ⚠ machine-specific: REGENERATE on other machines
 │   └── valerios-laptop/       # HP Laptop 14s-dq0xxx
 │       ├── configuration.nix
-│       └── hardware-configuration.nix # ⚠ generated ON that machine — not committed here
+│       └── hardware-configuration.nix # ⚠ machine-specific: REGENERATE on other machines
 ├── modules/
 │   ├── core/                  # boot, nix, locale, networking, users, audio, graphics
 │   ├── desktop/               # niri, gnome, fonts, input-method, theming

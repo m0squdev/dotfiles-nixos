@@ -7,7 +7,7 @@ every dotfile:
 sudo nixos-rebuild switch --flake ~/PWUE/dotfiles-nixos#<host>
 ```
 
-`<host>` is `valerios-nix` (desktop) or `valerios-laptop` (HP 14s). On either
+`<host>` is `valerios-desktop` (desktop) or `valerios-laptop` (HP 14s). On either
 machine the bare `--flake ~/PWUE/dotfiles-nixos` also works, since the output
 names match the hostnames.
 
