@@ -43,27 +43,62 @@ Item {
     property string errorText: ""
     property int failCount: 0
 
+    // The pointer starts HIDDEN and appears on first real movement, matching
+    // `hide_cursor = true` on the lock screen — with the difference that
+    // hyprlock never brings its cursor back (Seat.cpp only calls onHover when
+    // hide_cursor is unset), whereas this screen has a session menu and power
+    // controls that have to stay reachable with a mouse.
+    //
+    // It matters more here than it sounds: the X server parks the pointer dead
+    // centre at startup, which is inside the password field, so an always-on
+    // cursor sits on top of the placeholder on every single boot.
+    property bool pointerRevealed: false
+
     Rectangle {
         anchors.fill: parent
         color: root.cBase
         z: 0
     }
 
-    // Claims an arrow for the WHOLE greeter surface. Without this, any area
-    // where no QML item sets a cursor shows whatever the X root window cursor
-    // is — and SDDM's attempt to set that (`xsetroot -cursor_name left_ptr` in
-    // XorgDisplayServer.cpp) fails on NixOS unless xsetroot is on the
-    // display-manager unit's PATH, which ../sddm.nix now puts there. Setting
-    // the shape here means the pointer is a themed arrow whether or not that
-    // call succeeds, and on Wayland where it never runs at all.
+    // Owns the pointer for the WHOLE greeter surface, and watches it for the
+    // first real movement. Two jobs in one place:
     //
-    // z:0 and acceptedButtons: Qt.NoButton keep it inert: it is under every
-    // control, and the session and power rows override the shape on hover.
+    //  - It claims a cursor shape everywhere. Without that, any area where no
+    //    QML item sets one shows the X ROOT window cursor instead, which SDDM
+    //    only sets by shelling out to xsetroot (see ../sddm.nix) — so the shape
+    //    would depend on that subprocess having worked.
+    //  - It is what un-hides the pointer, because hover reaches it anywhere the
+    //    item above has hoverEnabled off, which is everywhere except the two
+    //    control rows in the bottom corners.
+    //
+    // z:0 and acceptedButtons: Qt.NoButton keep it inert otherwise: it sits
+    // under every control and never swallows a click.
     MouseArea {
         anchors.fill: parent
+        id: pointerWatch
         z: 0
         acceptedButtons: Qt.NoButton
-        cursorShape: Qt.ArrowCursor
+        hoverEnabled: true
+        cursorShape: root.pointerRevealed ? Qt.ArrowCursor : Qt.BlankCursor
+
+        // First position seen is the parked one, not a movement, so it only
+        // seeds the origin. The 5px threshold is hyprlock's own number — it
+        // uses exactly that distance to tell a real move from jitter when
+        // deciding whether to break out of its grace period (Seat.cpp).
+        property real originX: -1
+        property real originY: -1
+
+        onPositionChanged: (mouse) => {
+            if (originX < 0) {
+                originX = mouse.x
+                originY = mouse.y
+                return
+            }
+            var dx = mouse.x - originX
+            var dy = mouse.y - originY
+            if (Math.sqrt(dx * dx + dy * dy) > 5)
+                root.pointerRevealed = true
+        }
     }
 
     // Pre-blurred in the Nix derivation rather than at runtime: QML's blur
@@ -283,7 +318,12 @@ Item {
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.NoButton
-            cursorShape: Qt.ArrowCursor
+            // Never an I-beam: the parked pointer lands here, and a thin
+            // vertical bar inside a password box is indistinguishable from a
+            // text caret. Blank until the pointer is actually moved.
+            cursorShape: root.pointerRevealed ? Qt.ArrowCursor : Qt.BlankCursor
+            // hoverEnabled deliberately left off so hover still reaches the
+            // root watcher above, which is what reveals the pointer.
         }
     }
 
@@ -333,7 +373,7 @@ Item {
             id: sessionArea
             anchors.fill: parent
             hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
+            cursorShape: root.pointerRevealed ? Qt.PointingHandCursor : Qt.BlankCursor
             onClicked: sessionMenu.open()
         }
 
@@ -419,7 +459,7 @@ Item {
                     id: powerArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
+                    cursorShape: root.pointerRevealed ? Qt.PointingHandCursor : Qt.BlankCursor
                     onClicked: {
                         if (modelData.action === "suspend") sddm.suspend()
                         else if (modelData.action === "reboot") sddm.reboot()
