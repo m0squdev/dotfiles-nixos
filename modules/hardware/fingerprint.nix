@@ -119,8 +119,17 @@ in
   #     fprintd-verify        (check it before relying on it to log in)
   #
   # PAM: enabling fprintd is enough. The NixOS PAM module defaults each service's
-  # `fprintAuth` to services.fprintd.enable, so GDM, sudo and the lockers
+  # `fprintAuth` to services.fprintd.enable, so sudo and the lockers
   # (security.pam.services.hyprlock in ../desktop/niri.nix) all gain the finger
   # as an alternative to the password — never as a replacement, so a failed or
   # missing swipe still falls through to typing it.
+  #
+  # NOT the login screen, though, and that is fine. The greeter is SDDM now (see
+  # ../desktop/sddm.nix); its Catppuccin theme has no fingerprint prompt, where
+  # GDM did. Nothing is actually lost: a fingerprint login never unlocked the
+  # gnome-keyring anyway — pam_gnome_keyring needs the password itself to
+  # decrypt the login keyring — so the password had to be typed at the greeter
+  # regardless. The finger still does the job everywhere it pays off: hyprlock
+  # (which drives fprintd over D-Bus directly, see ../../config/hypr/hyprlock.conf)
+  # and sudo.
 }

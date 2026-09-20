@@ -41,7 +41,7 @@ whole desktop is themed **Catppuccin Mocha** with a mauve accent.*
 | Text-editor theme | GtkSourceView 5 Catppuccin Mocha scheme (GNOME Text Editor) |
 | Input method | **fcitx5 + Mozc** (Japanese; US-intl / US / JP cycling) |
 | GPU | per machine — see [Hosts](#hosts) |
-| Login | GDM → niri session |
+| Login | **SDDM** with an in-repo theme mirroring the hyprlock screen → niri session |
 
 ---
 
@@ -207,4 +207,6 @@ can place them by hand if you *don't* use the flake.
    ```
    Existing dotfiles it wants to manage are backed up as `*.hm-bak`.
 
-5. **Log out and pick the niri session** at the GDM login screen.
+5. **Log out and pick the niri session** at the SDDM login screen (session menu,
+   bottom-right). niri is already the default, so this is only needed if you
+   last logged into GNOME.

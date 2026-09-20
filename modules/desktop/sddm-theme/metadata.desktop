@@ -1,0 +1,11 @@
+[SddmGreeterTheme]
+Name=Mocha Lock
+Description=Catppuccin Mocha greeter laid out as a twin of this setup's hyprlock screen
+Type=sddm-theme
+Version=1.0
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=mocha-lock
+Theme-API=2.0
+License=MIT
+QtVersion=6

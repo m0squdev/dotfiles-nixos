@@ -25,8 +25,9 @@
     ../../modules/core/graphics.nix
     ../../modules/core/swap.nix
 
-    # --- Desktop (niri + GNOME session, theming, fonts, input method) ---
+    # --- Desktop (niri + GNOME session, login manager, theming, fonts, input method) ---
     ../../modules/desktop/gnome.nix
+    ../../modules/desktop/sddm.nix
     ../../modules/desktop/niri.nix
     ../../modules/desktop/fonts.nix
     ../../modules/desktop/input-method.nix
