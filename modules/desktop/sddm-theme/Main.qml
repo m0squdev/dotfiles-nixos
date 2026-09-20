@@ -181,6 +181,22 @@ Item {
             id: passwordField
             anchors.fill: parent
             focus: true
+
+            // THE FIELD MUST NEVER QUIETLY LOSE FOCUS. There is no caret here
+            // (see cursorDelegate below), so an unfocused field is visually
+            // identical to a focused one — you would type a password and watch
+            // nothing happen, with nothing on screen explaining why.
+            //
+            // The one thing allowed to hold focus instead is the session menu,
+            // which needs arrow keys and Enter while it is open. Everything
+            // else — the power labels, a click on the background — hands focus
+            // straight back. Qt.callLater defers the grab out of the signal
+            // that reported the loss, which would otherwise re-enter.
+            onActiveFocusChanged: {
+                if (!activeFocus && !sessionMenu.visible)
+                    Qt.callLater(passwordField.forceActiveFocus)
+            }
+
             echoMode: TextInput.Password
             passwordCharacter: "●"
             passwordMaskDelay: 0
@@ -387,6 +403,11 @@ Item {
             y: -height - 8
             padding: 6
 
+            // Hand focus back the moment the menu goes away, whether an entry
+            // was picked or it was dismissed. Without this the greeter is left
+            // with nothing focused and silently swallows typing.
+            onClosed: passwordField.forceActiveFocus()
+
             background: Rectangle {
                 implicitWidth: 240
                 color: root.cSurface0
@@ -484,7 +505,11 @@ Item {
             // blanks errorText. Setting the message before this would wipe it.
             passwordField.text = ""
             root.errorText = "Authentication failed"
-            passwordField.focus = true
+            // forceActiveFocus, not `focus = true`: after a rejected password
+            // the field must be ready to type into immediately, and `focus`
+            // alone only sets focus within the scope, not the window's ACTIVE
+            // focus, which is what receives key events.
+            passwordField.forceActiveFocus()
         }
     }
 
