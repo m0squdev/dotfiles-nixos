@@ -28,7 +28,122 @@ Item {
     readonly property string cRed: config.Red
     readonly property string cYellow: config.Yellow
     readonly property string fontFamily: config.Font
-    readonly property int margin: parseInt(config.Margin)
+
+    // --- per-monitor scale ---------------------------------------------------
+    // Everything below theme.conf is authored at scale 1.0 and multiplied by
+    // this, so the greeter grows on a dense panel exactly as the rest of the
+    // desktop does. On this laptop that is 1.25 on the built-in panel and 1.0
+    // on the external — the same numbers niri picks.
+    //
+    // THE GREETER CANNOT ASK NIRI. It runs before any session exists, so the
+    // scale has to be DERIVED, and the only way to land on niri's number is to
+    // run niri's own algorithm. niri's src/utils/scale.rs says it "follows logic
+    // and tests from Mutter" (meta-monitor.c): aim for a target DPI of 135 on
+    // panels under 20" diagonal and 110 on anything larger, then snap to the
+    // nearest quarter step that still leaves at least 800x480 logical pixels.
+    // Checked against both of this machine's panels — 310x170mm/1920x1080 gives
+    // 1.25 and 530x300mm/1920x1080 gives 1.0, which is what `niri msg outputs`
+    // reports for them.
+    //
+    // ../../../config/hypr/hyprlock-config.sh derives the lock screen's scale the
+    // SAME way, off the same EDID millimetres, so the two screens stay in
+    // parity by construction. Change the rule here and change it there too.
+    //
+    // The one case this gets wrong is an explicit `scale` in a niri output
+    // block: niri would obey it and both of these would go on guessing. There
+    // is no such override today; if one is ever added, both sides need telling.
+    readonly property real uiScale: guessMonitorScale()
+
+    function guessMonitorScale() {
+        // Screen.pixelDensity is physical dots per mm, i.e. QScreen's
+        // physicalDotsPerInch / 25.4, which is already the average of the X and
+        // Y axes. Averaging first and taking the diagonal after is worth a few
+        // tenths of a DPI and never a quarter-step, so the shortcut is safe:
+        // with one density the diagonal in inches is just diagPx / dpi.
+        var dpi = Screen.pixelDensity * 25.4
+        // An output with no EDID size reports 0mm and Qt hands back a nonsense
+        // density. niri returns 1.0 for exactly this case; so do we.
+        if (!(dpi > 0))
+            return 1
+
+        var diagPx = Math.sqrt(Screen.width * Screen.width
+                               + Screen.height * Screen.height)
+        var targetDpi = (diagPx / dpi) < 20 ? 135 : 110
+        var perfect = dpi / targetDpi
+
+        // MIN_SCALE 1 to MAX_SCALE 4 in quarter steps, skipping any that would
+        // shrink the logical area below MIN_LOGICAL_AREA (800x480).
+        var best = 1
+        var bestErr = Number.POSITIVE_INFINITY
+        for (var step = 4; step <= 16; step++) {
+            var s = step / 4
+            if (Math.round(Screen.width / s) * Math.round(Screen.height / s)
+                    < 800 * 480)
+                continue
+            var err = Math.abs(s - perfect)
+            if (err < bestErr) {
+                bestErr = err
+                best = s
+            }
+        }
+        return best
+    }
+
+    // theme.conf's numbers, scaled. Rounding here rather than at each use keeps
+    // the outline, the pill radius and the dot row landing on whole pixels.
+    //
+    // whole() EXISTS TO STOP A SILENT ZERO. Every property below is an `int`,
+    // and a QML binding that evaluates to NaN — one undefined name anywhere in
+    // the expression is enough — does not throw. It fails the assignment with
+    // "Unable to assign double to int" on stderr and leaves the property at 0.
+    // On a login screen that is invisible: a 0px dot draws nothing and a 0px
+    // font renders nothing, so the field simply stops showing that you typed,
+    // with no error anywhere a user would look. That is exactly how this
+    // shipped broken once. Anything non-finite now falls back to the unscaled
+    // value instead, which is wrong-looking but never blank.
+    function whole(v, fallback) {
+        var n = Math.round(v)
+        return isFinite(n) ? n : fallback
+    }
+    function px(v) { return whole(parseInt(v) * root.uiScale, parseInt(v) || 0) }
+
+    readonly property int margin: px(config.Margin)
+    readonly property int timeSize: px(config.TimeSize)
+    readonly property int dateSize: px(config.DateSize)
+    readonly property int fieldWidth: px(config.FieldWidth)
+    readonly property int fieldHeight: px(config.FieldHeight)
+    readonly property int fieldOffsetY: px(config.FieldOffsetY)
+    readonly property int outlineWidth: px(config.OutlineWidth)
+    readonly property int statusFontSize: px(config.StatusFontSize)
+
+    // DERIVED FROM THE SCALED FIELD HEIGHT, NOT SCALED THEMSELVES — and the
+    // difference is not cosmetic. hyprlock computes all three of these from the
+    // input-field's height every time it draws (PasswordInputField.cpp), so once
+    // the field grows they are recomputed from the GROWN height, which is not
+    // the same as multiplying the values it had at scale 1.0:
+    //
+    //   height 54 -> dot nearbyint(54*0.2*0.5)*2 = 10   (10 * 1.25 = 13 too)
+    //   height 68 -> dot nearbyint(68*0.2*0.5)*2 = 14   but 10 * 1.25 = 13
+    //
+    // A 13px dot against hyprlock's 14px was exactly the kind of drift these two
+    // screens are supposed to never have. Same for the placeholder, which
+    // hyprlock sizes at (int)(height / 4) POINTS — 17pt at height 68, i.e.
+    // 22.7px, where scaling the 17px it uses at height 54 would give 21px.
+    //
+    // At scale 1.0 these reproduce theme.conf's old DotSize/DotsSpacing/
+    // FieldFontSize exactly (10, 2, 17), which is why those keys are gone: they
+    // were only ever this arithmetic, precomputed for one scale.
+    //
+    // EVERY REFERENCE HERE IS `root.`-QUALIFIED ON PURPOSE. The first cut of
+    // these three wrote bare `fieldHeight` / `dotSize`, and on the real greeter
+    // — though never in any offscreen harness — those resolved to undefined,
+    // took the whole expression to NaN and zeroed all three. Unqualified names
+    // in a binding are resolved against a scope chain that is not the same in
+    // every context the greeter builds this file in; spelling out the object
+    // removes the question entirely, and is the form the QML linter wants too.
+    readonly property int dotSize: whole(root.fieldHeight * 0.2 * 0.5, 5) * 2
+    readonly property int dotsSpacing: whole(Math.floor(root.dotSize * 0.2), 2)
+    readonly property int fieldFontSize: whole(Math.floor(root.fieldHeight / 4) * 4 / 3, 17)
 
     // The username is never typed. SDDM records the last successful login in
     // /var/lib/sddm/state.conf and exposes it here; on a fresh install (no
@@ -39,9 +154,57 @@ Item {
                                  : (userModel.count > 0
                                     ? userModel.data(userModel.index(0, 0), Qt.UserRole + 1)
                                     : "")
-    property int sessionIndex: sessionModel.lastIndex
     property string errorText: ""
     property int failCount: 0
+
+    // --- state shared between MONITORS ---------------------------------------
+    // On a multi-monitor machine SDDM does not draw one greeter across the
+    // desktop: GreeterApp::addViewForScreen() gives every screen its own
+    // QQuickView, built with a bare `new QQuickView()` — so every screen also
+    // gets its own QQmlEngine, and this file is instantiated once per monitor
+    // with NOTHING in common between the copies. Left alone, that means one
+    // password field per screen, each filling up independently; only the screen
+    // holding keyboard focus (SDDM activates the primary one) would show what
+    // was typed, and picking a session on one screen would not apply to an
+    // Enter pressed on the other. The lock screen has no such split — hyprlock
+    // is a single process painting one password state onto every output — and
+    // this brings the greeter to the same behaviour.
+    //
+    // The ONLY shared, writable thing the per-screen engines can both reach is
+    // `config`. It is an SDDM::ThemeConfig, i.e. a QQmlPropertyMap, handed to
+    // every view's root context as the same C++ instance; it overrides neither
+    // updateValue() nor freeze(), so QML may write to it, and a write activates
+    // the key's notify signal in every engine that has a binding on it.
+    //
+    // A QML `pragma Singleton` would be the obvious tool and does NOT work
+    // here, precisely because singletons are per-engine.
+    //
+    // Both mirrors below are BINDINGS, not Connections handlers. A
+    // QQmlPropertyMap key's notify signal is anonymous (`__N()`), so there is no
+    // `onSharedPasswordChanged` to connect to on `config` itself — only a
+    // binding picks the change up. Each mirror is guarded by an inequality, so
+    // the write-out and read-back cannot loop.
+    //
+    // ../sddm.nix declares both keys in theme.conf. They must already exist
+    // when these bindings are created, or they would never be notified.
+    readonly property string sharedPassword: config.SharedPassword
+    onSharedPasswordChanged: {
+        if (passwordField.text !== root.sharedPassword)
+            passwordField.text = root.sharedPassword
+    }
+
+    // Empty until someone opens the menu; until then every screen independently
+    // shows sessionModel.lastIndex, which is the same value everywhere anyway.
+    readonly property string sharedSession: config.SharedSession
+    property int sessionIndex: sessionModel.lastIndex
+    onSharedSessionChanged: {
+        // parseInt() of anything unexpected is NaN, and sessionIndex is an int,
+        // so assigning it would fail the same silent way the metrics above did
+        // — except the casualty here is which session actually gets launched.
+        var i = parseInt(root.sharedSession)
+        if (isFinite(i) && i >= 0 && i !== root.sessionIndex)
+            root.sessionIndex = i
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -100,7 +263,7 @@ Item {
             renderType: Text.NativeRendering
             color: root.cText
             font.family: root.fontFamily
-            font.pixelSize: parseInt(config.TimeSize)
+            font.pixelSize: root.timeSize
             font.bold: true
             text: Qt.formatDateTime(new Date(), config.TimeFormat)
         }
@@ -111,7 +274,7 @@ Item {
             renderType: Text.NativeRendering
             color: root.cSubtext0
             font.family: root.fontFamily
-            font.pixelSize: parseInt(config.DateSize)
+            font.pixelSize: root.dateSize
             text: Qt.formatDateTime(new Date(), config.DateFormat)
         }
     }
@@ -134,13 +297,13 @@ Item {
         // screen. Qt insets a Rectangle's border instead, so the outer box has
         // to be grown by the outline on both sides to put the same number of
         // pixels in the same places. Measured: lock 308x68, greeter was 300x60.
-        width: parseInt(config.FieldWidth) + 2 * parseInt(config.OutlineWidth)
-        height: parseInt(config.FieldHeight) + 2 * parseInt(config.OutlineWidth)
+        width: root.fieldWidth + 2 * root.outlineWidth
+        height: root.fieldHeight + 2 * root.outlineWidth
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         // hyprlock's `position = 0, -20` on a centre-aligned input-field, i.e.
         // 20px below the middle of the screen rather than dead centre.
-        anchors.verticalCenterOffset: parseInt(config.FieldOffsetY)
+        anchors.verticalCenterOffset: root.fieldOffsetY
 
         TextField {
             id: passwordField
@@ -171,7 +334,7 @@ Item {
             horizontalAlignment: TextInput.AlignHCenter
             verticalAlignment: TextInput.AlignVCenter
             font.family: root.fontFamily
-            font.pixelSize: parseInt(config.FieldFontSize)
+            font.pixelSize: root.fieldFontSize
 
             // The masking dots are NOT drawn by this TextField — see the dots
             // Item below. Its own echo characters are made invisible rather
@@ -190,7 +353,7 @@ Item {
                 // hyprlock's outline_thickness = 4, in its accent colour. The
                 // outline turns yellow while caps lock is on, exactly as
                 // hyprlock's capslock_color does.
-                border.width: parseInt(config.OutlineWidth)
+                border.width: root.outlineWidth
                 border.color: keyboard.capsLock ? root.cYellow : root.cAccent
             }
 
@@ -205,7 +368,16 @@ Item {
             cursorDelegate: Item { }
 
             onAccepted: root.attemptLogin()
-            onTextChanged: root.errorText = ""
+            // Publishing the text here rather than in a Keys handler is what
+            // makes the mirror cover everything that can change it — typing,
+            // paste, select-and-delete, and the clear on a failed attempt.
+            // Assignments coming back FROM another screen land here too, which
+            // is what the guard is for.
+            onTextChanged: {
+                root.errorText = ""
+                if (root.sharedPassword !== text)
+                    config.SharedPassword = text
+            }
         }
 
         // THE MASKING DOTS, drawn here rather than left to the TextField's own
@@ -229,8 +401,8 @@ Item {
             anchors.fill: parent
             z: 2
 
-            readonly property int size: parseInt(config.DotSize)
-            readonly property int gap: parseInt(config.DotsSpacing)
+            readonly property int size: root.dotSize
+            readonly property int gap: root.dotsSpacing
             property real count: 0
             readonly property real rowWidth: (size + gap) * count - gap
 
@@ -278,7 +450,7 @@ Item {
             renderType: Text.NativeRendering
             textFormat: Text.StyledText
             font.family: root.fontFamily
-            font.pixelSize: parseInt(config.FieldFontSize)
+            font.pixelSize: root.fieldFontSize
             color: root.cText
             text: "<i>󰌾 Logged in as </i><font color=\"" + root.cAccent + "\">"
                   + root.currentUser + "</font>"
@@ -310,13 +482,13 @@ Item {
         z: 3
         anchors {
             top: parent.verticalCenter
-            topMargin: parseInt(config.FieldHeight) + parseInt(config.FieldOffsetY)
+            topMargin: root.fieldHeight + root.fieldOffsetY
             horizontalCenter: parent.horizontalCenter
         }
         renderType: Text.NativeRendering
         textFormat: Text.StyledText
         font.family: root.fontFamily
-        font.pixelSize: parseInt(config.StatusFontSize)
+        font.pixelSize: root.statusFontSize
         font.italic: true
         color: keyboard.capsLock ? root.cYellow : root.cRed
         // Mirrors hyprlock's `fail_text = <i>$FAIL <b>($ATTEMPTS)</b></i>`,
@@ -340,7 +512,7 @@ Item {
         }
         renderType: Text.NativeRendering
         font.family: root.fontFamily
-        font.pixelSize: parseInt(config.StatusFontSize)
+        font.pixelSize: root.statusFontSize
         color: sessionArea.containsMouse ? root.cAccent : root.cSubtext0
         text: sessionModel.data(sessionModel.index(root.sessionIndex, 0),
                                 Qt.UserRole + 4) + " ▾"
@@ -360,8 +532,8 @@ Item {
         // the background leaves the item text and highlight stock.
         Menu {
             id: sessionMenu
-            y: -height - 8
-            padding: 6
+            y: -height - root.px(8)
+            padding: root.px(6)
 
             // Hand focus back the moment the menu goes away, whether an entry
             // was picked or it was dismissed. Without this the greeter is left
@@ -369,9 +541,9 @@ Item {
             onClosed: passwordField.forceActiveFocus()
 
             background: Rectangle {
-                implicitWidth: 240
+                implicitWidth: root.px(240)
                 color: root.cSurface0
-                radius: 12          // the waybar/swaync corner
+                radius: root.px(12) // the waybar/swaync corner
                 border.width: 1
                 border.color: root.cAccent
             }
@@ -383,24 +555,27 @@ Item {
                 delegate: MenuItem {
                     id: sessionItem
                     text: model.name
-                    implicitHeight: 34
+                    implicitHeight: root.px(34)
 
                     contentItem: Text {
                         text: sessionItem.text
                         renderType: Text.NativeRendering
                         font.family: root.fontFamily
-                        font.pixelSize: parseInt(config.StatusFontSize)
+                        font.pixelSize: root.statusFontSize
                         color: sessionItem.highlighted ? root.cBase : root.cText
                         verticalAlignment: Text.AlignVCenter
-                        leftPadding: 10
+                        leftPadding: root.px(10)
                     }
 
                     background: Rectangle {
                         color: sessionItem.highlighted ? root.cAccent : "transparent"
-                        radius: 8
+                        radius: root.px(8)
                     }
 
-                    onTriggered: root.sessionIndex = model.index
+                    // Through `config`, not straight into root.sessionIndex:
+                    // attemptLogin() runs on whichever screen has focus, and
+                    // it must launch the session picked on EITHER of them.
+                    onTriggered: config.SharedSession = String(model.index)
                 }
             }
         }
@@ -409,7 +584,7 @@ Item {
     // --- power actions, bottom-right ----------------------------------------
     Row {
         z: 3
-        spacing: 16
+        spacing: root.px(16)
         anchors {
             right: parent.right
             bottom: parent.bottom
@@ -432,7 +607,7 @@ Item {
             delegate: Text {
                 renderType: Text.NativeRendering
                 font.family: root.fontFamily
-                font.pixelSize: parseInt(config.StatusFontSize)
+                font.pixelSize: root.statusFontSize
                 color: powerArea.containsMouse ? root.cAccent : root.cSubtext0
                 text: modelData.label
 

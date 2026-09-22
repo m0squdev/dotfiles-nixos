@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+# Emit a hyprlock config in which every widget is drawn once PER MONITOR, at
+# that monitor's scale. Writes to stdout; ../niri/lock.sh feeds the result to
+# `hyprlock -c`.
+#
+# WHY THIS EXISTS — hyprlock has no scale setting, and cannot be given one.
+# It binds wp_fractional_scale_v1, but only to size its buffer
+# (LockSurface.cpp: `size = (size_ * fractionalScale).floor()`); the widgets are
+# then laid out in that buffer's own DEVICE pixels. Measured: with ./hyprlock.conf
+# unchanged, the clock's ink was 371x122 px at output scale 1.0, 1.25 AND 2.0,
+# while hyprlock logged "Got fractional scale: 200.0%". So a 1.25-scaled laptop
+# panel got the same physical-pixel layout as a 1.0-scaled 24" monitor, which is
+# out of step with every other surface in the session.
+#
+# The only lever left is to pre-multiply the numbers. And because hyprlock's
+# `monitor =` selects ONE output — with empty meaning ALL of them, and no way to
+# say "all except" — a scaled layout means enumerating every monitor and giving
+# each its own copy of every widget. That is machine work, hence this script
+# instead of a hand-maintained config.
+#
+# ./hyprlock.conf STAYS THE SOURCE OF TRUTH and is still where the design is
+# edited. This only rewrites it: widgets are re-emitted per monitor with the
+# geometry keys multiplied. Nothing here needs touching to move a label or
+# recolour a field.
+#
+# SCALE IS DERIVED, NOT READ FROM NIRI, and that is deliberate. The SDDM greeter
+# (../../modules/desktop/sddm-theme/Main.qml) has to solve the same problem and
+# CANNOT ask niri, because it runs before any session exists. So both sides run
+# niri's own algorithm over the same EDID millimetres and land on the same
+# number by construction. Reading niri's `logical.scale` here would be more
+# direct but would let the login and lock screens drift apart, which is the one
+# thing they must not do.
+#
+# The algorithm is niri's src/utils/scale.rs, which says it "follows logic and
+# tests from Mutter" (meta-monitor.c): target 135 DPI below 20" diagonal and
+# 110 DPI at or above it, then snap to the nearest quarter step that still
+# leaves at least 800x480 logical pixels. Main.qml carries the same rule in QML
+# and is checked against all sixteen of niri's own test vectors.
+set -u
+
+CONF="${1:-$HOME/.config/hypr/hyprlock.conf}"
+
+# Geometry keys, i.e. the ones that mean pixels and so must be multiplied.
+# DELIBERATELY NOT HERE:
+#   dots_size / dots_spacing  — fractions of the field height, already scaled
+#                               by it, so multiplying would scale them twice
+#   blur_size / blur_passes   — background, and the greeter's wallpaper is
+#                               pre-blurred at a fixed radius too; scaling one
+#                               and not the other is what would break parity
+SCALED_KEYS='font_size|size|outline_thickness|position|rounding|border_size'
+
+# Blocks that are per-monitor widgets. Everything else (general, auth,
+# background, the top-level `source =` and `$colour =` lines) is emitted once.
+WIDGET_BLOCKS='label|input-field|image|shape'
+
+# --- monitors, and the scale each one should get ---------------------------
+# `niri msg outputs` rather than `--json`: there is no jq in this setup, and the
+# three fields needed here are one grep each out of the text form. If this ever
+# starts coming back empty, lock.sh falls back to the unscaled config rather
+# than locking with no widgets at all.
+monitors=$(niri msg outputs 2>/dev/null | awk '
+  /^Output /          { name = $NF; gsub(/[()]/, "", name); next }
+  /^  Current mode:/  { split($3, m, "x"); mw = m[1]; mh = m[2]; next }
+  /^  Physical size:/ { split($3, p, "x"); pw = p[1]; ph = p[2]
+                        if (name != "" && mw > 0 && pw > 0)
+                            print name, pw, ph, mw, mh
+                        name = ""; next }
+')
+
+if [ -z "$monitors" ]; then
+  printf 'hyprlock-config.sh: niri reported no usable outputs\n' >&2
+  exit 1
+fi
+
+guess_scale() {
+  awk -v pw="$1" -v ph="$2" -v w="$3" -v h="$4" 'BEGIN {
+    if (pw <= 0 || ph <= 0) { print 1; exit }
+    # One averaged density, exactly as Main.qml does it: QScreen only exposes
+    # the average of the two axes, so deriving the diagonal from it here keeps
+    # the two implementations bit-for-bit comparable. Checked against niri to
+    # agree on every one of its test vectors.
+    dpi = ((w / pw) + (h / ph)) / 2 * 25.4
+    diag = sqrt(w * w + h * h)
+    target = (diag / dpi) < 20 ? 135 : 110
+    perfect = dpi / target
+    best = 1; besterr = 1e9
+    for (step = 4; step <= 16; step++) {
+      s = step / 4
+      lw = int(w / s + 0.5); lh = int(h / s + 0.5)
+      if (lw * lh < 800 * 480) continue
+      err = perfect - s; if (err < 0) err = -err
+      if (err < besterr) { besterr = err; best = s }
+    }
+    print best
+  }'
+}
+
+# --- prologue: everything that is not a per-monitor widget -----------------
+printf '# GENERATED by config/hypr/hyprlock-config.sh — do not edit.\n'
+printf '# Source of truth is config/hypr/hyprlock.conf; this is that file with\n'
+printf '# every widget re-emitted once per monitor at that monitor'"'"'s scale.\n\n'
+
+awk -v widgets="$WIDGET_BLOCKS" '
+  BEGIN { depth = 0; skip = 0 }
+  # Opening line of a block: "name {" possibly with leading spaces.
+  /^[a-zA-Z_-]+[ \t]*\{[ \t]*$/ && depth == 0 {
+      blk = $1
+      if (blk ~ "^(" widgets ")$") { skip = 1 }
+      depth = 1
+      if (!skip) print
+      next
+  }
+  { if (/\{[ \t]*$/) depth++
+    if (/^[ \t]*\}/) depth--
+    if (!skip) print
+    if (depth == 0) skip = 0
+  }
+' "$CONF"
+
+# --- one copy of every widget block, per monitor ---------------------------
+while read -r name pw ph mw mh; do
+  [ -n "$name" ] || continue
+  scale=$(guess_scale "$pw" "$ph" "$mw" "$mh")
+  printf '\n# ---- %s : %sx%smm %sx%s -> scale %s ----\n' \
+         "$name" "$pw" "$ph" "$mw" "$mh" "$scale"
+
+  awk -v widgets="$WIDGET_BLOCKS" -v keys="$SCALED_KEYS" \
+      -v mon="$name" -v s="$scale" '
+    # Multiply every number in a geometry value, leaving separators alone so
+    # "270, 54" and "-30, -149" both survive.
+    function scalevals(v,   n, i, parts, out, t) {
+        n = split(v, parts, /,/)
+        out = ""
+        for (i = 1; i <= n; i++) {
+            t = parts[i]
+            gsub(/^[ \t]+|[ \t]+$/, "", t)
+            if (t ~ /^-?[0-9]+(\.[0-9]+)?$/)
+                t = sprintf("%d", (t * s) + (t < 0 ? -0.5 : 0.5))
+            out = out (i > 1 ? ", " : "") t
+        }
+        return out
+    }
+    BEGIN { depth = 0; inw = 0 }
+    /^[a-zA-Z_-]+[ \t]*\{[ \t]*$/ && depth == 0 {
+        blk = $1
+        inw = (blk ~ "^(" widgets ")$")
+        depth = 1
+        if (inw) { print blk " {"; print "  monitor = " mon }
+        next
+    }
+    {
+        if (/\{[ \t]*$/) depth++
+        if (/^[ \t]*\}/) depth--
+        if (!inw) { if (depth == 0) inw = 0; next }
+        if (depth == 0) { print "}"; inw = 0; next }
+        # Inside a widget: drop comments and the original monitor line, scale
+        # the geometry keys, pass everything else through untouched.
+        if ($0 ~ /^[ \t]*#/) next
+        if ($0 ~ /^[ \t]*monitor[ \t]*=/) next
+        if (match($0, /^[ \t]*([a-zA-Z_]+)[ \t]*=[ \t]*/)) {
+            key = $0
+            sub(/^[ \t]*/, "", key); sub(/[ \t]*=.*$/, "", key)
+            val = $0; sub(/^[^=]*=[ \t]*/, "", val)
+            if (key ~ "^(" keys ")$") { print "  " key " = " scalevals(val); next }
+        }
+        print
+    }
+  ' "$CONF"
+done <<EOF
+$monitors
+EOF

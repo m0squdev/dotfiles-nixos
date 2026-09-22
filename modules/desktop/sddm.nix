@@ -146,21 +146,15 @@ let
     FieldOffsetY="20"
     OutlineWidth="4"
 
-    # The placeholder line. hyprlock computes its placeholder at
-    # (int)(size.y / 4) = 13, but that 13 is POINTS (see the note on TimeSize
-    # below), so 13 * 4/3 = 17 pixels here.
-    FieldFontSize="17"
     StatusFontSize="16"
 
-    # The masking dots are drawn as CIRCLES by ./sddm-theme/Main.qml rather than
-    # as font glyphs, so these are hyprlock's own numbers instead of font sizes
-    # measured to imitate them. From PasswordInputField.cpp, with this config's
-    # dots_size = dots_spacing = 0.2:
-    #   DotSize      nearbyint(FieldHeight * 0.2 * 0.5) * 2 = 10 at height 54
-    #   DotsSpacing  floor(DotSize * 0.2)                   = 2
-    # Both derive from FieldHeight, so recompute them if the field is resized.
-    DotSize="10"
-    DotsSpacing="2"
+    # NO DotSize / DotsSpacing / FieldFontSize KEYS, DELIBERATELY. hyprlock
+    # derives all three from the input-field's height at draw time
+    # (PasswordInputField.cpp), so ./sddm-theme/Main.qml derives them the same
+    # way from FieldHeight instead of restating them here. They used to be
+    # constants — 10, 2 and 17 — which was correct only while there was one
+    # scale in play; on the 1.25 panel a precomputed 10 scales to 13 where
+    # hyprlock recomputes 14. The QML carries the arithmetic and the reasoning.
 
     # How long the dot count takes to catch up with what has been typed.
     # hyprlock animates dots.currentAmount through its "inputFieldDots" node,
@@ -172,6 +166,26 @@ let
     # Qt's syntax for hyprlock's `date +"%A, %d %B %Y"` and its 24-hour $TIME.
     TimeFormat="HH:mm"
     DateFormat="dddd, d MMMM yyyy"
+
+    # THE TWO KEYS BELOW ARE NOT SETTINGS. They are the greeter's only channel
+    # for sharing state BETWEEN MONITORS, and they are declared here rather than
+    # in the QML because they have to exist before the first view loads.
+    #
+    # SDDM instantiates the theme once per screen, each in its OWN QQmlEngine
+    # (GreeterApp::addViewForScreen does a bare `new QQuickView()`), so the
+    # per-screen copies of ./sddm-theme/Main.qml share nothing but the C++
+    # objects in their root contexts. `config` — this file — is the only one of
+    # those that is both shared and writable: SDDM::ThemeConfig is a
+    # QQmlPropertyMap, so `config.SharedPassword = x` on one screen re-triggers
+    # every other screen's binding on it. See the long note in Main.qml.
+    #
+    # A binding against a key that does not exist YET never connects to the
+    # map's dynamic notify signal and so never updates — which is exactly what
+    # would happen if the QML created these on first keystroke. Hence the empty
+    # declarations. Their values are only ever set at runtime, in memory;
+    # ThemeConfig never writes back to this file.
+    SharedPassword=""
+    SharedSession=""
   '';
 
   sddm-theme =
@@ -196,6 +210,36 @@ in
   services.displayManager.sddm = {
     enable = true;
     theme = "mocha-lock";   # dir name created by the derivation above
+
+    # THE ONLY WAY TO PUT A VARIABLE IN THE GREETER'S ENVIRONMENT, and getting
+    # this wrong costs entire debugging sessions, so: the greeter does NOT
+    # inherit the display-manager unit's environment. sddm-helper builds the
+    # greeter session's environment from scratch and, for an
+    # XDG_SESSION_CLASS=greeter session, injects exactly two things —
+    # QT_NO_XDG_DESKTOP_PORTAL and whatever is listed here
+    # (src/helper/Backend.cpp:108-119 in sddm 0.21). It is REPLACED, not merged.
+    # `systemd.services.display-manager.environment` therefore reaches the
+    # daemon and stops there.
+    #
+    # WHY QML_DISABLE_DISK_CACHE MATTERS: Qt compiles QML to .qmlc bytecode and
+    # caches it under the greeter's home (/var/lib/sddm/.cache), validating the
+    # cache against the SOURCE FILE'S MTIME. Every file in the Nix store has
+    # mtime 1970-01-01 01:00:01, and the greeter always loads the theme through
+    # the same path (/run/current-system/sw/share/sddm/themes/mocha-lock), so
+    # every rebuild of ./sddm-theme/Main.qml looks byte-identical to that check
+    # and the first cached compile is reused forever.
+    #
+    # The failure mode is brutal precisely because it is silent: theme.conf is
+    # parsed by SDDM's own C++ and never cached, so colours and sizes DO update
+    # on rebuild while everything structural in the QML does not — and the stale
+    # QML goes on reading theme.conf keys that have since been removed. It was
+    # caught here only because the greeter kept reporting QML errors at the same
+    # two line numbers across four revisions of a file whose length had changed
+    # each time. If a change to Main.qml ever appears to have no effect, check
+    # this first:
+    #   journalctl -b -u display-manager | grep 'Main.qml:'
+    # and see whether the line numbers correspond to the file on disk.
+    settings.General.GreeterEnvironment = "QML_DISABLE_DISK_CACHE=1";
 
     # DELIBERATELY NO `extraPackages` HERE, and it is worth knowing why, because
     # the failure it guards against is silent. A theme whose QML imports a
@@ -240,24 +284,18 @@ in
     XCURSOR_THEME = cursor.theme;
     XCURSOR_SIZE = toString cursor.size;
 
-    # WITHOUT THIS THE GREETER SILENTLY RUNS AN OLD THEME. Qt compiles QML to
-    # .qmlc bytecode and caches it under the greeter's home (/var/lib/sddm),
-    # then validates the cache by comparing the SOURCE FILE'S MTIME against the
-    # one recorded in the cache. Every file in the Nix store has mtime
-    # 1970-01-01 01:00:01, so every version of ./sddm-theme/Main.qml looks
-    # identical to that check and the first cached compile is reused forever.
-    #
-    # The failure is invisible and deeply confusing, because theme.conf is
-    # parsed by SDDM's own C++ and never cached: sizes, colours and formats all
-    # update on rebuild while everything structural in the QML — a new widget,
-    # an animation, a changed property — silently does not. Worse, the stale
-    # QML goes on reading theme.conf keys that have since been removed, so it
-    # also starts rendering subtly wrong.
-    #
-    # Disabling the disk cache costs a recompile of one ~500-line file at each
-    # greeter start, which is nothing, and makes a rebuild mean what it says.
-    QML_DISABLE_DISK_CACHE = "1";
+    # NOTE: QML_DISABLE_DISK_CACHE IS NOT SET HERE, AND MUST NOT BE. It belongs
+    # in `GreeterEnvironment` above — see the long comment there. Setting it on
+    # this unit looks right and does nothing, because the greeter does not
+    # inherit this environment.
   };
+
+  # Belt and braces for the QML cache described above. QML_DISABLE_DISK_CACHE
+  # stops a new one being read or written, so this only clears what every
+  # greeter start before that setting existed already left behind — but a cache
+  # that silently overrides the theme and cannot be inspected without root is
+  # not a thing to leave lying around. `R!` is remove-recursively, at boot only.
+  systemd.tmpfiles.rules = [ "R! /var/lib/sddm/.cache" ];
 
   # THE ONE THAT ACTUALLY THEMES THE POINTER, and not an obvious one. Two other
   # mechanisms look like they should and do not: sddm.conf's Theme.CursorTheme

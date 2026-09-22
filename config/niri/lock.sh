@@ -47,9 +47,25 @@ locked && exit 0
 if ! pgrep -x hyprlock >/dev/null && ! pgrep -x swaylock >/dev/null; then
   printf '\n===== %s : lock.sh starting locker =====\n' "$(date -Is)" >>"$LOG"
   if command -v hyprlock >/dev/null 2>&1; then
+    # PER-MONITOR SCALING. hyprlock has no scale setting and lays its widgets
+    # out in raw device pixels, so the config is generated with each monitor's
+    # geometry pre-multiplied — see ../hypr/hyprlock-config.sh for why that is
+    # the only available lever. Regenerated on every lock rather than once at
+    # login, so plugging a monitor in mid-session is picked up.
+    #
+    # Falls back to the hand-written config if generation fails: an unscaled
+    # lock screen is a cosmetic problem, a missing one is a security problem.
+    # It goes in XDG_RUNTIME_DIR (tmpfs, mode 0700) rather than /tmp.
+    SCALED="${XDG_RUNTIME_DIR:-/tmp}/hyprlock-scaled.conf"
     # --immediate-render paints the background without waiting on resources, which
     # shrinks the half-initialised window this whole script exists to close.
-    hyprlock --immediate-render >>"$LOG" 2>&1 &
+    if bash "$HOME/.config/hypr/hyprlock-config.sh" >"$SCALED" 2>>"$LOG"; then
+      hyprlock --immediate-render -c "$SCALED" >>"$LOG" 2>&1 &
+    else
+      printf '%s : hyprlock-config.sh failed — locking unscaled\n' \
+             "$(date -Is)" >>"$LOG"
+      hyprlock --immediate-render >>"$LOG" 2>&1 &
+    fi
   else
     swaylock -f >>"$LOG" 2>&1 &
   fi
