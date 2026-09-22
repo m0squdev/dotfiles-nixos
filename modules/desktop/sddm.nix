@@ -115,10 +115,16 @@ let
   # these and nothing else, so re-colouring or re-sizing the login screen is an
   # edit to this block — the QML never has to be touched.
   #
-  # The numbers are hyprlock's, read straight off
-  # ../../config/hypr/hyprlock.conf so the two screens line up: font_size 90 for
-  # the time and 25 for the date, a 300x60 input field, outline_thickness 4, and
-  # a 30px margin from the screen edge.
+  # The numbers track ../../config/hypr/hyprlock.conf so the two screens line
+  # up: a 280x54 input field, outline_thickness 4, and a 30px margin from the
+  # screen edge, all of which that file states identically.
+  #
+  # THE CLOCK IS THE ONE PLACE THE TWO FILES DISAGREE ON PAPER and still agree
+  # on screen, so do not "fix" one to match the other. Sizes here are PIXELS
+  # (Main.qml sets font.pixelSize); hyprlock's font_size goes to pango, which
+  # resolves POINTS at 96 DPI. The ratio is exactly 4/3, so this file's 90 and
+  # 25 are hyprlock's 68 and 19 — which is how a matching "90" on both sides
+  # once rendered the lock screen's clock a third too large.
   theme-conf = pkgs.writeText "theme.conf" ''
     [General]
     Background="${blurred-wallpaper}"
@@ -137,16 +143,38 @@ let
     DateSize="25"
 
     # hyprlock's `size`, `position = 0, -20` and outline_thickness = 4,
-    # verbatim — ../../config/hypr/hyprlock.conf carries the same 270x54.
+    # verbatim — ../../config/hypr/hyprlock.conf carries the same 280x54.
     # The field's corner radius is NOT a key: hyprlock leaves `rounding` at -1,
     # which means min(w,h)/2, so Main.qml derives a pill from the height
     # instead of taking a number here.
-    FieldWidth="270"
+    #
+    # 280 IS A WIDTH HERE AND A MINIMUM THERE, and that asymmetry is the whole
+    # point of the number. hyprlock re-derives the field's width every frame and
+    # makes an EMPTY field as wide as its placeholder text plus one field
+    # height, which at 270 came out 10px wider than the typing state on the
+    # 1.25-scaled panel — so the lock screen's box visibly shrank on the first
+    # keystroke while the greeter's (this one, fixed) never moved. 280 is the
+    # smallest round width that keeps hyprlock's max() on the configured value
+    # at every scale, which is what makes both boxes hold still. The margin is
+    # only 2px at scale 1.25; hyprlock.conf carries the arithmetic and the
+    # pango-view recipe for re-checking it if the placeholder ever changes.
+    FieldWidth="280"
     FieldHeight="54"
     FieldOffsetY="20"
     OutlineWidth="4"
 
     StatusFontSize="16"
+
+    # NO CheckText KEY, deliberately — the dots ARE the indicator between Enter
+    # and PAM's verdict. ./sddm-theme/Main.qml freezes the row where it was and
+    # leaves it on screen for the duration, which is what hyprlock does when its
+    # `check_text` is unset (its updateDots() early-returns on exactly that
+    # condition; ../../config/hypr/hyprlock.conf spells the mechanism out).
+    #
+    # A "Logging in…" lived here briefly and was dropped once the ten-second
+    # fingerprint timeout in ../hardware/fingerprint.nix was gone: with the
+    # check back under a second the message only flashes, and held dots say the
+    # same thing more quietly. Put it back if that wait ever grows again.
 
     # NO DotSize / DotsSpacing / FieldFontSize KEYS, DELIBERATELY. hyprlock
     # derives all three from the input-field's height at draw time
@@ -167,7 +195,7 @@ let
     TimeFormat="HH:mm"
     DateFormat="dddd, d MMMM yyyy"
 
-    # THE TWO KEYS BELOW ARE NOT SETTINGS. They are the greeter's only channel
+    # THE THREE KEYS BELOW ARE NOT SETTINGS. They are the greeter's only channel
     # for sharing state BETWEEN MONITORS, and they are declared here rather than
     # in the QML because they have to exist before the first view loads.
     #
@@ -186,6 +214,7 @@ let
     # ThemeConfig never writes back to this file.
     SharedPassword=""
     SharedSession=""
+    SharedChecking=""
   '';
 
   sddm-theme =

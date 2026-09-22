@@ -179,18 +179,45 @@ Item {
     // A QML `pragma Singleton` would be the obvious tool and does NOT work
     // here, precisely because singletons are per-engine.
     //
-    // Both mirrors below are BINDINGS, not Connections handlers. A
+    // All three mirrors below are BINDINGS, not Connections handlers. A
     // QQmlPropertyMap key's notify signal is anonymous (`__N()`), so there is no
     // `onSharedPasswordChanged` to connect to on `config` itself — only a
     // binding picks the change up. Each mirror is guarded by an inequality, so
     // the write-out and read-back cannot loop.
     //
-    // ../sddm.nix declares both keys in theme.conf. They must already exist
-    // when these bindings are created, or they would never be notified.
+    // ../sddm.nix declares all three keys in theme.conf. They must already
+    // exist when these bindings are created, or they would never be notified.
     readonly property string sharedPassword: config.SharedPassword
     onSharedPasswordChanged: {
         if (passwordField.text !== root.sharedPassword)
             passwordField.text = root.sharedPassword
+    }
+
+    // TRUE BETWEEN ENTER AND PAM'S VERDICT, and mirrored like the password so
+    // the other monitor holds its dots too instead of still offering to log
+    // in. Never cleared on success, because there is no success to handle: SDDM
+    // stops the greeter ~100ms after the authentication succeeds.
+    //
+    // It also makes the field UNSUBMITTABLE for the duration, which is the part
+    // that fixes a real lost keystroke rather than just looking better. SDDM
+    // answers a second Login message with "Existing authentication ongoing,
+    // aborting" and throws it away — so a greeter that stays silent and
+    // accepting through a slow check trains you to press Enter again and then
+    // ignores it. The check used to take TEN SECONDS (pam_fprintd, see
+    // ../../hardware/fingerprint.nix) and pressing Enter twice was the normal
+    // reaction to it; the wait is short again now, but "silent and still
+    // accepting Enter" is the shape of the bug, not the length of the wait.
+    readonly property string sharedChecking: config.SharedChecking
+    property bool checking: false
+    onSharedCheckingChanged: {
+        var c = (root.sharedChecking === "1")
+        if (c !== root.checking)
+            root.checking = c
+    }
+    onCheckingChanged: {
+        var s = root.checking ? "1" : ""
+        if (config.SharedChecking !== s)
+            config.SharedChecking = s
     }
 
     // Empty until someone opens the menu; until then every screen independently
@@ -245,8 +272,10 @@ Item {
     }
 
     // --- clock, top-right ---------------------------------------------------
-    // Mirrors hyprlock's `label` blocks: time at font_size 90 anchored
-    // -30,0 top-right, date at font_size 25 sitting 150px below it.
+    // Mirrors hyprlock's two top-right `label` blocks, which sit at -30,-30 and
+    // -30,-149. Their font_size is 68 and 19 against the 90 and 25 used here,
+    // and that is not drift: hyprlock's numbers are POINTS resolved by pango at
+    // 96 DPI, these are pixels, and 68 * 4/3 = 90. See the note in ../sddm.nix.
     Column {
         z: 3
         spacing: 0
@@ -293,10 +322,11 @@ Item {
     Item {
         z: 3
         // hyprlock's `size` is the INNER box and its outline is drawn OUTSIDE
-        // that, so a 300x60 field with outline_thickness 4 occupies 308x68 on
+        // that, so the 280x54 field with outline_thickness 4 occupies 288x62 on
         // screen. Qt insets a Rectangle's border instead, so the outer box has
         // to be grown by the outline on both sides to put the same number of
-        // pixels in the same places. Measured: lock 308x68, greeter was 300x60.
+        // pixels in the same places — without this the greeter drew the whole
+        // field 8px narrower and shorter than the lock screen's.
         width: root.fieldWidth + 2 * root.outlineWidth
         height: root.fieldHeight + 2 * root.outlineWidth
         anchors.horizontalCenter: parent.horizontalCenter
@@ -398,13 +428,41 @@ Item {
         // this one number.
         Item {
             id: dots
+            // THE INNER BOX, not the outer one. hyprlock lays its dots out in
+            // `inputFieldBox`, which is the field WITHOUT the outline, and the
+            // padding and scroll arithmetic below is written in those
+            // coordinates. Centring on its own could not tell the two apart —
+            // the outline is symmetric, so it cancels — which is why filling
+            // the parent was good enough until the row got long enough to need
+            // the edges of the box.
             anchors.fill: parent
+            anchors.margins: root.outlineWidth
             z: 2
 
             readonly property int size: root.dotSize
             readonly property int gap: root.dotsSpacing
             property real count: 0
+
+            // hyprlock's names, from the same draw():
+            //   DOTPAD        (h - passSize.y) / 2
+            //   DOTAREAWIDTH  w - DOTPAD * 2
+            //   MAXDOTS       round(DOTAREAWIDTH / (passSize.x + passSpacing))
+            //   CURRWIDTH     (passSize.x + passSpacing) * CURRDOTS - passSpacing
+            readonly property real pad: (height - size) / 2
+            readonly property real areaWidth: width - pad * 2
+            readonly property int maxDots: Math.round(areaWidth / (size + gap))
             readonly property real rowWidth: (size + gap) * count - gap
+
+            // PAST maxDots THE ROW SCROLLS AND THE FIELD DOES NOT GROW. This
+            // is hyprlock's second `xstart` branch verbatim; it parks the
+            // newest dot against the right of the dot area and lets the oldest
+            // fall off the left, so a long password stays inside the pill. The
+            // greeter had no such branch and went on centring a row that kept
+            // getting wider, so past ~20 characters the dots simply marched out
+            // of the box in both directions and over the wallpaper.
+            readonly property real xstart: count > maxDots
+                ? (width + maxDots * (size + gap) - gap - 2 * rowWidth) / 2
+                : (areaWidth - rowWidth) / 2 + pad
 
             Behavior on count {
                 NumberAnimation {
@@ -413,25 +471,47 @@ Item {
                 }
             }
 
+            // FROZEN WHILE A CHECK IS IN FLIGHT. What keeps the dots on screen
+            // for the wait is simply that attemptLogin() does not clear the
+            // field; this guard is the narrower case of TYPING during the
+            // wait, which would otherwise grow the row. hyprlock refuses the
+            // same update in the same place:
+            //
+            //     if (checkWaiting && configCheckText.empty())
+            //         return;     // updateDots(), dot count left alone
+            //
+            // so on neither screen does anything typed after Enter show up.
             Connections {
                 target: passwordField
-                function onTextChanged() { dots.count = passwordField.text.length }
+                function onTextChanged() {
+                    if (!root.checking)
+                        dots.count = passwordField.text.length
+                }
             }
 
             Repeater {
                 model: Math.ceil(dots.count)
                 delegate: Rectangle {
+                    readonly property int floored: Math.floor(dots.count)
+                    readonly property real frac: dots.count - floored
+
                     width: dots.size
                     height: dots.size
                     radius: width / 2
                     color: root.cText
                     y: (dots.height - height) / 2
-                    x: (dots.width - dots.rowWidth) / 2 + index * (dots.size + dots.gap)
-                    // Only the newest dot is partially faded, exactly as
-                    // hyprlock scales fontCol.a by (CURRDOTS - DOTFLOORED).
-                    opacity: index === Math.floor(dots.count)
-                             ? dots.count - Math.floor(dots.count)
-                             : 1
+                    x: dots.xstart + index * (dots.size + dots.gap)
+                    // hyprlock's `if (i < DOTFLOORED - MAXDOTS) continue`.
+                    visible: index >= floored - dots.maxDots
+                    // Both ENDS of a row in motion are faded, not just the new
+                    // one: hyprlock scales fontCol.a by (CURRDOTS - DOTFLOORED)
+                    // for the dot being typed and by its complement for the one
+                    // scrolling off, so the row slides rather than jumps.
+                    opacity: frac === 0
+                             ? 1
+                             : (index === floored
+                                ? frac
+                                : (index === floored - dots.maxDots ? 1 - frac : 1))
                 }
             }
         }
@@ -444,6 +524,11 @@ Item {
         // dimming the prompt to subtext) both read as visibly different from
         // the lock screen. A TextField's own placeholderText cannot be styled
         // per-run, so this is an overlay shown only while the field is empty.
+        //
+        // It stays HIDDEN through a check, because the field is not cleared on
+        // submit and the frozen dots keep it non-empty. hyprlock's draw() skips
+        // its placeholder for the same window whenever check_text is unset, so
+        // neither screen puts a message where the dots are.
         Text {
             anchors.centerIn: parent
             visible: passwordField.text.length === 0
@@ -627,14 +712,24 @@ Item {
     }
 
     function attemptLogin() {
-        if (passwordField.text.length === 0)
+        // A check already in flight owns the field; a second sddm.login() would
+        // be refused by the daemon anyway. See the `checking` note above.
+        if (root.checking || passwordField.text.length === 0)
             return
+        // THE FIELD IS NOT CLEARED HERE. hyprlock does empty its password
+        // buffer on submit, but its dot row does not follow (see the freeze in
+        // the dots Item), so what you typed stays on screen for the wait.
+        // Leaving the text alone reproduces that without a second mechanism —
+        // and it is `checking`, not an empty field, that stops a resubmit.
+        // onLoginFailed() is what clears it, once there is a verdict.
+        root.checking = true
         sddm.login(root.currentUser, passwordField.text, root.sessionIndex)
     }
 
     Connections {
         target: sddm
         function onLoginFailed() {
+            root.checking = false
             root.failCount += 1
             // Clear the field FIRST: the assignment fires onTextChanged, which
             // blanks errorText. Setting the message before this would wipe it.
