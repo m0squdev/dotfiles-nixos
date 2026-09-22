@@ -124,12 +124,49 @@ in
   # as an alternative to the password — never as a replacement, so a failed or
   # missing swipe still falls through to typing it.
   #
-  # NOT the login screen, though, and that is fine. The greeter is SDDM now (see
-  # ../desktop/sddm.nix); its Catppuccin theme has no fingerprint prompt, where
-  # GDM did. Nothing is actually lost: a fingerprint login never unlocked the
-  # gnome-keyring anyway — pam_gnome_keyring needs the password itself to
-  # decrypt the login keyring — so the password had to be typed at the greeter
-  # regardless. The finger still does the job everywhere it pays off: hyprlock
-  # (which drives fprintd over D-Bus directly, see ../../config/hypr/hyprlock.conf)
-  # and sudo.
+  # ...EXCEPT AT THE GREETER, where it has to be taken back out. This block used
+  # to claim SDDM never saw pam_fprintd at all. It did, and it cost ten seconds
+  # on every single login:
+  #
+  #   20:22:10.933  sddm: Message received from greeter: Login
+  #   20:22:11.262  sddm: "Place your right index finger on the fingerprint reader"
+  #   20:22:11.579  sddm: Message received from greeter: Login
+  #   20:22:11.579  sddm: Existing authentication ongoing, aborting
+  #   20:22:21.358  sddm-helper: [PAM] Preparing to converse...     <- 10.1s later
+  #   20:22:21.638  sddm: Authentication for user "valer" successful
+  #
+  # The password was typed and Enter pressed at :10.9; PAM opened with
+  # pam_fprintd, which waits out its whole verification timeout before failing
+  # over to pam_unix, and only then was the password — already sitting in
+  # sddm-helper's conversation buffer the entire time — actually checked. The
+  # greeter went on taking input throughout (that second Login at :11.5 is a
+  # user pressing Enter again because nothing had happened), and SDDM discards a
+  # second Login while the first is outstanding, so that attempt was dropped on
+  # the floor. Every symptom of "the login screen takes a while and isn't
+  # frozen" is in those six lines, and none of it is niri or the session
+  # starting: the greeter is stopped 0.1s after the password lands and the
+  # session is up 0.9s after that.
+  #
+  # WHY IT REACHES SDDM AT ALL, since nothing here or in ../desktop/sddm.nix
+  # mentions fingerprints: the NixOS sddm module does not write an auth stack of
+  # its own. It sets `useDefaultRules = false` and exactly one rule, `auth
+  # substack login` — so /etc/pam.d/sddm is whatever /etc/pam.d/login is,
+  # fprintd included. That also makes `security.pam.services.sddm.fprintAuth =
+  # false` a no-op: there is no fprintd rule in sddm's own rule set to turn off.
+  # login's is the knob that works, hence the one below.
+  #
+  # NOTHING OF VALUE IS LOST, which is why this is a removal and not a reorder.
+  # A fingerprint could never have logged you in here anyway: the greeter only
+  # starts a PAM conversation when it sends Login, and ../desktop/sddm-theme/
+  # Main.qml refuses to send that with an empty field — so reaching the finger
+  # prompt required typing the password first. Even if a swipe had succeeded it
+  # would have left the keyring locked, since pam_gnome_keyring needs the
+  # password itself to decrypt it.
+  #
+  # The cost is that a bare tty login (agetty -> /etc/pam.d/login) loses the
+  # finger too — and it would have hung for the same ten seconds. Everywhere the
+  # finger actually pays off is untouched: sudo, polkit, and hyprlock, which has
+  # its own PAM service and in any case drives fprintd over D-Bus directly (see
+  # ../../config/hypr/hyprlock.conf).
+  security.pam.services.login.fprintAuth = false;
 }
