@@ -55,6 +55,7 @@
     ../../modules/apps/zen.nix
     ../../modules/apps/syncthing.nix
     ../../modules/apps/claude-desktop.nix
+    ../../modules/apps/claude-code.nix
     ../../modules/apps/libreoffice.nix
     ../../modules/apps/printing.nix
     ../../modules/apps/papers.nix

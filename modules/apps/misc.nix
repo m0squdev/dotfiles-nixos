@@ -27,7 +27,9 @@
     # SAL_USE_VCLPLUGIN env var (else it's un-themed under niri), so per THE RULE
     # it earned its own module.
     alacritty             # terminal (Mod+T); Catppuccin Mocha config via Home Manager
-    claude-code
+    # claude-code moved to ../../modules/apps/claude-code.nix — it now pins a
+    # newer version than the frozen nixpkgs ships, so per THE RULE it earned its
+    # own module.
     git
     vim                   # editor for configuration.nix (nano is installed by default too)
   ];
