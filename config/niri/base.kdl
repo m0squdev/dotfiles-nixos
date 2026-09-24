@@ -575,7 +575,7 @@ binds {
     Mod+W     { focus-window-or-workspace-up; }
     Mod+S     { focus-window-or-workspace-down; }
     // No vim H/J/L focus aliases — they were exact duplicates of Mod+WASD above.
-    // Mod+K stays as the input-method switcher (cycle-input, below); Mod+L locks the screen.
+    // Mod+K stays as the input-method switcher (input-preset, below); Mod+L locks the screen.
 
     Mod+Ctrl+Left  { move-column-left; }
     Mod+Ctrl+Down  { move-window-down; }
@@ -780,12 +780,12 @@ binds {
     Mod+B { toggle-column-tabbed-display; }
 
     // Input switcher: cycles US-intl -> US -> Japanese (fcitx5/Mozc) -> US-intl.
-    // cycle-input.sh ties niri's XKB layouts together with fcitx5 so this one key
-    // rotates through all three (the waybar language menu click does the same).
-    // Falls back to a plain US-intl/US toggle until fcitx5 is installed+running.
+    // input-preset.sh ties niri's XKB layouts together with fcitx5's input-method
+    // groups so this one key rotates through all three. Clicking the waybar
+    // indicator instead opens a menu to jump straight to one.
     // Note: make sure you do NOT also have a layout-switch hotkey in xkb options above,
     // or it would switch twice on each press (once by xkb, once by niri).
-    Mod+K { spawn "/home/valer/.config/niri/cycle-input.sh"; }
+    Mod+K { spawn "/home/valer/.config/niri/input-preset.sh"; }
 
     Print { screenshot; }
     Ctrl+Print { screenshot-screen; }

@@ -1,10 +1,29 @@
+# Two groups, ONE engine each, switched by ~/.config/niri/input-preset.sh with
+# `fcitx5-remote -g` (and read back with `-q`).
+#
+# Group switching is instance-global: it works even when no window owns a
+# text-input context, e.g. right after login. The previous single-group layout
+# forced the switcher to use `fcitx5-remote -o/-c`, which act on the focused
+# input context only and silently no-op when there isn't one — that is what left
+# the switcher stuck on US after logging in.
+#
+# Keep exactly one engine per group. With a single engine fcitx5 always uses it,
+# so the group name alone means "Japanese" or "English" and nothing depends on
+# fcitx5's context-scoped active/inactive flag. Adding a second engine to a group
+# brings the login bug back.
+#
+# NOTE: fcitx5 rewrites this file whenever the group changes, but it is a
+# read-only symlink into the Nix store, so that write fails and the group falls
+# back to English (the first group) on restart. That is deliberate — every
+# session starts in English. Edit this file in the repo, not in ~/.config.
+
 [Groups/0]
 # Group Name
-Name=Default
+Name=English
 # Layout
 Default Layout=us
 # Default Input Method
-DefaultIM=mozc
+DefaultIM=keyboard-us
 
 [Groups/0/Items/0]
 # Name
@@ -12,12 +31,20 @@ Name=keyboard-us
 # Layout
 Layout=
 
-[Groups/0/Items/1]
+[Groups/1]
+# Group Name
+Name=Japanese
+# Layout
+Default Layout=us
+# Default Input Method
+DefaultIM=mozc
+
+[Groups/1/Items/0]
 # Name
 Name=mozc
 # Layout
 Layout=
 
 [GroupOrder]
-0=Default
-
+0=English
+1=Japanese

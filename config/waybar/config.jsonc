@@ -102,14 +102,15 @@
     },
 
     // Input indicator: same look as the old niri/language module (󰌌 us intl / 󰌌 us)
-    // but shows "󰌌 jp" when fcitx5/Mozc is active — which the built-in module can't.
-    // Click cycles US-intl -> US -> jp via cycle-input.sh (same as Mod+K). Polled
-    // every 2s + poked instantly by cycle-input.sh (signal 7).
+    // but shows "󰌌 jp" for Japanese — which the built-in module can't. The label
+    // comes from input-preset.sh so the presets are defined in exactly one place.
+    // Click opens the preset menu (Mod+K still cycles). Polled every 2s + poked
+    // instantly by input-preset.sh (signal 7).
     "custom/inputlang": {
-        "exec": "/home/valer/.config/waybar/scripts/input-state.sh",
+        "exec": "/home/valer/.config/niri/input-preset.sh label",
         "interval": 2,
         "signal": 7,
-        "on-click": "/home/valer/.config/niri/cycle-input.sh",
+        "on-click": "/home/valer/.config/niri/input-preset.sh menu",
         "tooltip": false
     },
 

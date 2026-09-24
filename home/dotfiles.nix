@@ -8,7 +8,7 @@
 { ... }:
 {
   xdg.configFile = {
-    # Window manager + its helper scripts (cycle-input, volume, lock, idle, …)
+    # Window manager + its helper scripts (input-preset, volume, lock, idle, …)
     "niri" = { source = ../config/niri; recursive = true; };
 
     # Status bar + all its custom module scripts
