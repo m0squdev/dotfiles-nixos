@@ -96,7 +96,7 @@ menu() {
     done
     # --index returns the row number, so the visible text stays free to change
     # without the mapping back to a preset id depending on parsing it.
-    sel=$(printf '%s\n' "${entries[@]}" | fuzzel --dmenu --index --prompt "Input > ")
+    sel=$(printf '%s\n' "${entries[@]}" | fuzzel --dmenu --index --prompt "Keyboard > ")
     [ -n "$sel" ] && apply "${PRESETS[sel]%%|*}"
 }
 
