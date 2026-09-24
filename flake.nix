@@ -30,7 +30,7 @@
     # unpacks a vendored binary, so letting it keep its own nixpkgs costs a
     # little extra evaluation but avoids a version-skew breakage.
     claude-desktop-extra.url =
-      "github:patrickjaja/claude-desktop-extra/55bb93d559e045736bd73742e9e63d238bde5ad3";
+      "github:patrickjaja/claude-desktop-extra/4eeb9d11a245c4025a9c32e0a000861b8ba7c44b";
 
     # Zen browser (see ./modules/apps/zen.nix).
     #

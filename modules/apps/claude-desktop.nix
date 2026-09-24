@@ -13,11 +13,13 @@
 # so we get the real Catppuccin palette rather than an approximation, and the
 # maintenance burden of hand-patching app.asar stays upstream.
 #
-# It tracks the same upstream version as the plain repackage (1.24012.9).
+# It tracks the same upstream version as the plain repackage (2.7032.0).
 #
 # The rev is pinned in ../../flake.nix — bump it there to update Claude Desktop.
 # NOTE: the app self-updates its web content at runtime; the rev only pins the
-# Electron shell + the theme patches.
+# Electron shell + the theme patches. When Claude Desktop shows an "update
+# required" notice (as it did once Opus 4.8 shipped), it's the shell that's too
+# old — bump the flake rev.
 #
 # Unlike ./zen.nix this does NOT use `builtins.getFlake`: upstream's flake.lock
 # omits its own flake-utils/nixpkgs entries, so a getFlake would fail pure
@@ -27,78 +29,18 @@
 #
 # The theme itself is selected in ../../config/Claude/claude-desktop-extra.jsonc
 # (wired up by ../../home/dotfiles.nix).
+#
+# No overrideAttrs here anymore. Earlier revs needed two: a corrected src hash
+# (upstream's v1.24012.9 release asset was re-published with different bytes) and
+# an RPATH on the vendored node-pty prebuild (so Claude Code inside the app could
+# open a shell). As of this rev both are handled upstream — release assets are
+# immutable with a matching baked-in hash, and packaging/nix/package.nix now
+# patches libstdc++ into pty.node itself, with a tripwire that fails the build if
+# the .deb layout ever moves the binding. So we consume the flake package as-is.
 { pkgs, inputs, ... }:
 let
   system = pkgs.stdenv.hostPlatform.system;
-
-  # HASH OVERRIDE — remove when the flake.nix rev is bumped past 55bb93d.
-  #
-  # Upstream's packaging/nix/package.nix hardcodes the v1.24012.9 release
-  # tarball's hash (its own comment: "TODO: CI updates this hash after building
-  # the release tarball"). That GitHub release ASSET was later re-published with
-  # different bytes and the pin was never bumped, so the fetch fails with a
-  # fixed-output hash mismatch on any host whose /nix/store must actually
-  # download it (a fresh install — this was hit installing valerios-laptop; the
-  # desktop only escapes it because the old tarball is already in its store).
-  #
-  # Re-point src at the same URL with the current asset's hash — verified by
-  # downloading it: a valid 232 MB gzip of the expected claude-desktop/ tree.
-  # This is pinned to the exact rev in ../../flake.nix; bumping that rev should
-  # bring a corrected upstream hash, at which point delete this whole override.
-  claude-desktop-extra =
-    inputs.claude-desktop-extra.packages.${system}.claude-desktop-extra.overrideAttrs (old: {
-      src = pkgs.fetchurl {
-        url = "https://github.com/patrickjaja/claude-desktop-extra/releases/download/v1.24012.9/claude-desktop-1.24012.9-linux.tar.gz";
-        hash = "sha256-usk37SSOMpH5EpCmdPfJRLQ0EC+J3WXjF3Mtg/WU/iI=";
-      };
-
-      # node-pty RPATH — without this, Claude Code inside the app cannot open a
-      # shell at all ("startShellPty" fails and no command ever runs).
-      #
-      # The pty host is an ELECTRON_RUN_AS_NODE child that `require`s the
-      # vendored node-pty, whose native half is the prebuilt
-      # app.asar.unpacked/.../prebuilds/linux-x64/pty.node. That prebuild is a
-      # generic-Linux ELF with an EMPTY RPATH and DT_NEEDED libstdc++.so.6.
-      # Nothing supplies it: Electron/Chromium statically bundles its own libc++
-      # and does NOT link libstdc++ (the binary's DT_NEEDED has libgcc_s and
-      # libssp only), and upstream's wrapper puts just libsecret on
-      # LD_LIBRARY_PATH. So dlopen fails with "libstdc++.so.6: cannot open
-      # shared object file".
-      #
-      # That error is then SWALLOWED: node-pty's loadNativeModule() tries six
-      # candidate paths and rethrows only the last one's failure, so the log
-      # shows the misleading "Cannot find module './prebuilds/linux-x64/pty.node'"
-      # — a path that never exists — rather than the missing library.
-      #
-      # Fixed here on the library itself, not on LD_LIBRARY_PATH: upstream
-      # deliberately keeps that variable minimal and SUFFIXED so it cannot
-      # shadow libraries for the app's children (MCP servers, the claude CLI,
-      # qemu), and an RPATH on the one broken .node leaks into nothing.
-      #
-      # `programs.nix-ld` below does NOT cover this. nix-ld only serves binaries
-      # executed through the stub /lib64 loader; this is a dlopen from inside an
-      # already-running nixpkgs-built Electron, which uses its own loader.
-      #
-      # Appended to upstream's postFixup so its libsecret RPATH tripwire (issue
-      # #206) still runs. `dontPatchELF = true` upstream only disables the
-      # automatic shrink hook — calling patchelf explicitly is still fine, and
-      # it is already in nativeBuildInputs.
-      postFixup = (old.postFixup or "") + ''
-        pty=$out/lib/claude-desktop/resources/app.asar.unpacked/node_modules/node-pty/prebuilds/linux-x64/pty.node
-        if [ ! -e "$pty" ]; then
-          echo "ERROR: node-pty prebuild missing at $pty" >&2
-          echo "Upstream moved or dropped it; re-audit this override." >&2
-          exit 1
-        fi
-        chmod u+w "$pty"
-        patchelf --add-rpath ${pkgs.stdenv.cc.cc.lib}/lib "$pty"
-        if ldd "$pty" | grep "not found"; then
-          echo "ERROR: pty.node still has unresolved libraries (see above)." >&2
-          exit 1
-        fi
-        echo "pty.node RPATH tripwire: OK (libstdc++ reachable)"
-      '';
-    });
+  claude-desktop-extra = inputs.claude-desktop-extra.packages.${system}.claude-desktop-extra;
 in
 {
   environment.systemPackages = [ claude-desktop-extra ];
@@ -111,6 +53,10 @@ in
   # nix-ld installs a stub ld at /lib64/ld-linux-x86-64.so.2 that resolves
   # libraries from nix-ld.libraries. patchelf is not viable here because Claude
   # Desktop auto-updates the binary and any patch would be overwritten.
+  #
+  # (This is the app's OWN in-bundle Claude Code, separate from the terminal
+  # `claude` in ./claude-code.nix — upstream leaves the flake's claude-code at
+  # null, so the app keeps self-downloading its copy and this stays needed.)
   programs.nix-ld.enable = true;
   programs.nix-ld.libraries = with pkgs; [
     stdenv.cc.cc.lib  # libstdc++.so.6, needed by the Claude Code Node binary
@@ -121,12 +67,44 @@ in
   # integrated titlebar. `claude-desktop --diagnose` reports the current state as
   # "Titlebar = integrated (default)" without this. Equivalent to passing
   # `--native-titlebar`, but set here so it applies however the app is launched
-  # — .desktop entry, fuzzel, or the Ctrl+Alt+Space Quick Entry bind.
+  # — .desktop entry, fuzzel, or the Ctrl+Alt+Space Quick Entry bind. Still read
+  # by fix_native_frame's CLAUDE_NATIVE_TITLEBAR check as of 2.7032.0.
   #
   # Set as a session variable rather than by wrapping the package: the launcher
   # derives its Wayland app_id and portal identity from /proc/self/exe, and an
   # extra wrapper layer is exactly what upsets that. Takes effect at next login.
   environment.sessionVariables.CLAUDE_NATIVE_TITLEBAR = "1";
+
+  # Point Chromium's sandbox at the bundled helper, or the app SIGILLs on launch
+  # before any window appears (`app-com.anthropic.Claude-<pid>.scope` dumps core,
+  # signal 4). This is the one thing that breaks on the 2.7032.0 bump:
+  #
+  # The old package ran the app through nixpkgs' `electron` WRAPPER, which exports
+  # CHROME_DEVEL_SANDBOX pointing at electron's chrome-sandbox. 2.7032.0 instead
+  # copies electron's *unwrapped* dist and runs it directly, so that variable is
+  # never set. With it unset Chromium auto-discovers the `chrome-sandbox` sitting
+  # next to its binary (the copied dist ships one), finds it lacks the SUID bit —
+  # the Nix store CANNOT carry one, unlike the .deb/.rpm/pacman builds that
+  # chmod it 4755 root — and treats a misconfigured *auto-discovered* helper as
+  # fatal: "found, but is not configured correctly", which aborts via `ud2` →
+  # SIGILL. Upstream's launcher only adds --no-sandbox for AppImages, and its
+  # comment wrongly assumes the Nix path keeps electron's wrapper, so nothing
+  # rescues us here.
+  #
+  # Setting CHROME_DEVEL_SANDBOX to ANY explicit path dodges that fatal
+  # auto-discovery: an explicitly-named helper that turns out unusable makes
+  # Chromium fall back to the unprivileged-user-namespace sandbox instead of
+  # aborting (userns is enabled here — /proc/sys/user/max_user_namespaces is
+  # nonzero — and is the NixOS default sandbox for Electron/Chromium anyway). So
+  # the sandbox stays ON for the remote claude.ai content; we just steer past the
+  # crash. Verified: unset → core dumps; set → window opens, theme applies.
+  #
+  # We point it at the app's OWN bundled helper so it tracks the package on every
+  # rev bump. A session variable (not a package wrapper) for the same app_id /
+  # /proc/self/exe reason as the titlebar var above — takes effect at next login,
+  # so log out and back in (or reboot) after the rebuild.
+  environment.sessionVariables.CHROME_DEVEL_SANDBOX =
+    "${claude-desktop-extra}/lib/claude-desktop/chrome-sandbox";
 
   # NOTE: the app's "Quick Entry" popup is deliberately NOT bound to a key. Its
   # own global-hotkey routes cannot work here anyway (the xdg-desktop-portal
