@@ -18,7 +18,7 @@
     "swaync" = { source = ../config/swaync; recursive = true; };
     "swayosd" = { source = ../config/swayosd; recursive = true; };
     "swaylock" = { source = ../config/swaylock; recursive = true; };
-    "hypr" = { source = ../config/hypr; recursive = true; }; # hyprlock + now-playing
+    "hypr" = { source = ../config/hypr; recursive = true; }; # hyprlock
 
     # Application launcher
     "fuzzel" = { source = ../config/fuzzel; recursive = true; };
