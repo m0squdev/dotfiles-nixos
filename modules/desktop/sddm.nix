@@ -298,7 +298,9 @@ in
     # and note that the cursor fix below CANNOT carry over — there is no
     # RESOURCE_MANAGER property under Wayland, so the xrdb approach simply does
     # nothing there and the pointer needs solving another way. That is the thing
-    # to check first if this is ever switched back on.
+    # to check first if this is ever switched back on. Second on the list: the
+    # login screen's brightness keys, which ../hardware/laptop.nix hangs off the
+    # same X-only setupCommands.
   };
 
   # XCURSOR_PATH is what lets libXcursor FIND the theme; the name it looks for

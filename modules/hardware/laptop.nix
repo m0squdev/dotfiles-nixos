@@ -2,6 +2,32 @@
 # and a backlight. Nothing here is specific to one model — a second laptop
 # imports the same file. Desktop hosts simply omit the import.
 { pkgs, lib, config, ... }:
+let
+  # One brightness-key press at the login screen, with the same arithmetic as
+  # `swayosd-client --brightness ±10`, which is what the keys run inside niri
+  # (config/niri/brightness.sh): a step of 10% of max_brightness, and never
+  # below swayosd's built-in 5% floor. Matching both is what lets a level set
+  # before login carry on in the same steps after it. brightnessctl's relative
+  # "+10%" works out to that same step (brightnessctl.c calc_value), but its
+  # --min-value takes a RAW value, not a percentage, so the 5% is computed from
+  # the device's own max here rather than hardcoded for this panel.
+  greeter-brightness = pkgs.writeShellScript "greeter-brightness" ''
+    bctl=${pkgs.brightnessctl}/bin/brightnessctl
+    max=$("$bctl" --class=backlight max) || exit 0
+    floor=$(( (max * 5 + 50) / 100 ))
+    case "''${1:-}" in
+      up)   exec "$bctl" -q --class=backlight --min-value="$floor" set +10% ;;
+      down) exec "$bctl" -q --class=backlight --min-value="$floor" set 10%- ;;
+    esac
+  '';
+
+  greeter-sxhkdrc = pkgs.writeText "greeter-sxhkdrc" ''
+    XF86MonBrightnessUp
+      ${greeter-brightness} up
+    XF86MonBrightnessDown
+      ${greeter-brightness} down
+  '';
+in
 {
   # --- Power profiles -------------------------------------------------------
   # power-profiles-daemon (power-saver / balanced / performance) rather than TLP:
@@ -36,6 +62,36 @@
   #   2. the user in that group. Merged with the extraGroups list in
   #      ../core/users.nix rather than replacing it.
   users.users."valer".extraGroups = [ "video" ];
+
+  # --- Brightness keys at the login screen ----------------------------------
+  # Everything above is for the niri session, where niri binds the keys. Before
+  # login there is no niri: the SDDM greeter runs on its own X server, SDDM has
+  # no key handling of its own, and ../desktop/sddm-theme/Main.qml catches no
+  # keys — so XF86MonBrightness* reached the greeter and were dropped.
+  #
+  # sxhkd, started from the greeter's Xsetup script, picks them up. Hooking the
+  # greeter's X SERVER rather than the input devices is what confines this to
+  # the login screen with no bookkeeping. Xsetup runs as root every time SDDM
+  # starts that server, so brightnessctl can write the backlight without the
+  # `sddm` user joining `video`. And SDDM stops the server once you log in, which
+  # takes sxhkd down with it, so it can never double-step niri's own binding. A
+  # root evdev daemon (actkbd, triggerhappy) would instead read every keystroke
+  # for the whole uptime and need an "is the greeter the active session?" check
+  # on each press.
+  #
+  # Keys only, no on-screen popup. Volume keys are left alone on purpose: at the
+  # login screen they could only reach the greeter user's PipeWire, not yours.
+  #
+  # TIED TO THE X11 GREETER. If ../desktop/sddm.nix ever turns on
+  # `wayland.enable`, setupCommands stops running and these keys quietly go
+  # dead again. Nothing is printed on success; a failed grab or a brightnessctl
+  # error lands in `journalctl -b -t greeter-brightness-keys`. systemd-cat also
+  # takes the place of the pipes SDDM hands Xsetup, so the backgrounded daemon
+  # holds none of them open.
+  services.xserver.displayManager.setupCommands = ''
+    ${pkgs.systemd}/bin/systemd-cat -t greeter-brightness-keys \
+      ${pkgs.sxhkd}/bin/sxhkd -c ${greeter-sxhkdrc} </dev/null &
+  '';
 
   # --- Battery pill repaint -------------------------------------------------
   # The waybar power pill (config/waybar/scripts/power.sh) polls on a 30s timer,
