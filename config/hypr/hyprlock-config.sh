@@ -161,7 +161,21 @@ while read -r name pw ph mw mh; do
             key = $0
             sub(/^[ \t]*/, "", key); sub(/[ \t]*=.*$/, "", key)
             val = $0; sub(/^[^=]*=[ \t]*/, "", val)
-            if (key ~ "^(" keys ")$") { print "  " key " = " scalevals(val); next }
+            # `font_size = $fieldFont` means "the input-field placeholder size":
+            # hyprlock sizes that as (int)(h / 4) points of the SCALED field
+            # height, which no single integer times the scale reproduces at
+            # every scale (13 -> 16 at 1.25, but the placeholder is 17). So
+            # derive it from the field height this monitor actually got. Needs
+            # the input-field to come first in the file; until then it falls
+            # through to the unscaled $fieldFont.
+            if (key == "font_size" && val == "$fieldFont" && fieldH != "") {
+                print "  font_size = " int(fieldH / 4); next
+            }
+            if (key ~ "^(" keys ")$") {
+                out = scalevals(val)
+                if (blk == "input-field" && key == "size") { split(out, wh, /, /); fieldH = wh[2] }
+                print "  " key " = " out; next
+            }
         }
         print
     }

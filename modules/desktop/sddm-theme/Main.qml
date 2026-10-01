@@ -155,7 +155,6 @@ Item {
                                     ? userModel.data(userModel.index(0, 0), Qt.UserRole + 1)
                                     : "")
     property string errorText: ""
-    property int failCount: 0
 
     // --- state shared between MONITORS ---------------------------------------
     // On a multi-monitor machine SDDM does not draw one greeter across the
@@ -218,7 +217,31 @@ Item {
         var s = root.checking ? "1" : ""
         if (config.SharedChecking !== s)
             config.SharedChecking = s
+        if (root.checking) {
+            root.verdictPending = true
+            root.pamMessage = ""
+        }
     }
+
+    // ONE WRONG PASSWORD IS TWO LoginFailed SIGNALS. The daemon's
+    // slotAuthError() emits one alongside the PAM message, and then
+    // slotAuthenticationFinished(success = false) emits another for the same
+    // attempt — the journal shows them back to back. Handling both ran the
+    // failure path twice (and once made the old attempt counter read "(2)"
+    // on the first miss). So a failure is handled once per check, latched
+    // per screen: `checking` itself cannot be the latch, because the first
+    // screen to handle the signal clears the SHARED flag before the other
+    // screen's handler has run.
+    property bool verdictPending: false
+
+    // WHAT PAM ACTUALLY SAID, so a failure names its cause instead of a fixed
+    // "Authentication failed". SDDM forwards it as informationMessage() just
+    // before LoginFailed: pam_strerror() of the result ("Authentication
+    // failure", "User account has expired", …) and anything a module printed
+    // with PAM_ERROR_MSG or PAM_TEXT_INFO along the way. The FIRST message of
+    // the check is kept, because a module's own text (pam_faillock's lockout
+    // notice, say) comes before the generic strerror and says more.
+    property string pamMessage: ""
 
     // Empty until someone opens the menu; until then every screen independently
     // shows sessionModel.lastIndex, which is the same value everywhere anyway.
@@ -550,7 +573,7 @@ Item {
         // neither screen puts a message where the dots are.
         //
         // A FAILURE TAKES THIS SAME SLOT. hyprlock swaps placeholder_text for
-        // fail_text = <i>$FAIL <b>($ATTEMPTS)</b></i> and renders it in
+        // fail_text = <i>$FAIL</i> and renders it in
         // fail_color, inside the field rather than on a line of its own; it
         // goes back to the placeholder on the next keypress or after
         // general:fail_timeout (2000ms, left at its default). The greeter used
@@ -569,7 +592,9 @@ Item {
             font.pixelSize: root.fieldFontSize
             color: root.errorText !== "" ? root.cRed : root.cText
             text: root.errorText !== ""
-                  ? "<i>" + root.errorText + " <b>(" + root.failCount + ")</b></i>"
+                  // errorText is PAM's plain text; escape it before it meets
+                  // StyledText markup.
+                  ? "<i>" + root.errorText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</i>"
                   : "<i>󰌾 Logged in as </i><font color=\"" + root.cAccent + "\">"
                     + root.currentUser + "</font>"
         }
@@ -742,13 +767,19 @@ Item {
 
     Connections {
         target: sddm
+        function onInformationMessage(message) {
+            if (root.verdictPending && root.pamMessage === "")
+                root.pamMessage = message
+        }
         function onLoginFailed() {
+            if (!root.verdictPending)
+                return
+            root.verdictPending = false
             root.checking = false
-            root.failCount += 1
             // Clear the field FIRST: the assignment fires onTextChanged, which
             // blanks errorText. Setting the message before this would wipe it.
             passwordField.text = ""
-            root.errorText = "Authentication failed"
+            root.errorText = root.pamMessage !== "" ? root.pamMessage : "Authentication failed"
             // forceActiveFocus, not `focus = true`: after a rejected password
             // the field must be ready to type into immediately, and `focus`
             // alone only sets focus within the scope, not the window's ACTIVE

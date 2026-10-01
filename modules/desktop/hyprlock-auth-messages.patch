@@ -1,0 +1,252 @@
+--- a/src/auth/Auth.cpp
++++ b/src/auth/Auth.cpp
+@@ -102,6 +102,13 @@
+ void CAuth::enqueueFail(const std::string& failText, eAuthImplementations implType) {
+     static const auto FAILTIMEOUT = g_pConfigManager->getValue<Hyprlang::INT>("general:fail_timeout");
+ 
++    // Fingerprint failures are reported through $FPRINTPROMPT only, so the
++    // input field is left to the password.
++    if (implType == AUTH_IMPL_FINGERPRINT) {
++        g_pHyprlock->enqueueForceUpdateTimers();
++        return;
++    }
++
+     m_sCurrentFail.failText   = failText;
+     m_sCurrentFail.failSource = implType;
+     m_sCurrentFail.failedAttempts++;
+--- a/src/auth/Fingerprint.cpp
++++ b/src/auth/Fingerprint.cpp
+@@ -3,6 +3,7 @@
+ #include "../helpers/Log.hpp"
+ #include "../config/ConfigManager.hpp"
+ 
++#include <algorithm>
+ #include <memory>
+ #include <unistd.h>
+ #include <pwd.h>
+@@ -73,6 +74,82 @@
+         if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
+             startVerify();
+     });
++
++    // fprintd crashing mid-verify sends no VerifyStatus, so without this the
++    // prompt would keep inviting a scan that can never complete. Its claim died
++    // with it, so the proxy is dropped without a Release; recover() then
++    // D-Bus-activates a fresh fprintd and claims again.
++    try {
++        m_sDBUSState.bus = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.DBus"}, sdbus::ObjectPath{"/org/freedesktop/DBus"});
++        m_sDBUSState.bus->uponSignal("NameOwnerChanged")
++            .onInterface("org.freedesktop.DBus")
++            .call([this](const std::string& name, const std::string& oldOwner, const std::string& newOwner) {
++                if (name != FPRINT || !newOwner.empty() || !m_sDBUSState.device)
++                    return;
++                Log::logger->log(Log::WARN, "fprint: fprintd went away");
++                m_sDBUSState.device.reset();
++                m_bVerifyActive = false;
++                recover("Fingerprint unavailable (fingerprint service stopped)", false);
++            });
++    } catch (sdbus::Error& e) { Log::logger->log(Log::WARN, "fprint: could not watch fprintd ({})", e.what()); }
++}
++
++// PERMANENT: only for too many wrong fingers. The reason also becomes the
++// prompt, so $FPRINTPROMPT keeps saying so until the next resume re-arms it.
++void CFingerprint::disable(const std::string& reason) {
++    m_sFailureReason = reason;
++    m_sPrompt        = reason;
++    g_pHyprlock->enqueueForceUpdateTimers();
++}
++
++// TRANSIENT: every other failure re-arms the sensor by itself.
++//
++// A verify that ran for a while before erroring is the elanmoc2 driver's
++// ~10s wait-for-finger timeout ("transfer timed out", reported to us as
++// verify-unknown-error), not a fault: restart it straight away and say
++// nothing. Anything else is a real outage: show the reason (with no
++// fingerprint icon, which reads as "not available") and retry on a backoff
++// that doubles up to 30s, so a sensor or daemon that fails instantly is not
++// hammered. The first successful VerifyStart replaces the reason with the
++// ready prompt.
++void CFingerprint::recover(const std::string& reason, bool dropDevice) {
++    m_sDBUSState.verifying = false;
++
++    if (dropDevice && m_sDBUSState.device) {
++        // Release first: a claim left behind would make our own next Claim
++        // fail with "already claimed".
++        releaseDevice();
++        m_sDBUSState.device.reset();
++    }
++
++    if (m_bRestartPending)
++        return;
++
++    int delayMs;
++    if (m_bVerifyActive && std::chrono::steady_clock::now() - m_verifyStartedAt >= std::chrono::seconds(5)) {
++        Log::logger->log(Log::INFO, "fprint: verify timed out waiting for a finger, re-arming");
++        delayMs      = 250;
++        m_iBackoffMs = 1000;
++    } else {
++        Log::logger->log(Log::WARN, "fprint: {}, retrying in {}ms", reason, m_iBackoffMs);
++        delayMs          = m_iBackoffMs;
++        m_iBackoffMs     = std::min(m_iBackoffMs * 2, 30000);
++        m_sFailureReason = reason;
++        m_sPrompt        = reason;
++        g_pHyprlock->enqueueForceUpdateTimers();
++    }
++    m_bVerifyActive   = false;
++    m_bRestartPending = true;
++
++    g_pHyprlock->addTimer(
++        std::chrono::milliseconds(delayMs),
++        [](ASP<CTimer> self, void* data) {
++            const auto FP          = (CFingerprint*)data;
++            FP->m_bRestartPending = false;
++            if (!FP->m_sDBUSState.sleeping && !FP->m_sDBUSState.verifying)
++                FP->startVerify();
++        },
++        this);
+ }
+ 
+ void CFingerprint::handleInput(const std::string& input) {
+@@ -112,6 +189,7 @@
+         proxy->callMethod("GetDefaultDevice").onInterface(MANAGER).storeResultsTo(path);
+     } catch (sdbus::Error& e) {
+         Log::logger->log(Log::WARN, "fprint: couldn't connect to Fprint service ({})", e.what());
++        recover("Fingerprint unavailable (fingerprint service unavailable)", false);
+         return false;
+     }
+     Log::logger->log(Log::INFO, "fprint: using device path {}", path.c_str());
+@@ -156,7 +234,7 @@
+         case MATCH_NO_MATCH:
+             stopVerify();
+             if (m_sDBUSState.retries >= 3) {
+-                m_sFailureReason = "Fingerprint auth disabled (too many failed attempts)";
++                disable("Fingerprint auth disabled (too many failed attempts)");
+             } else {
+                 done                         = false;
+                 static const auto RETRYDELAY = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:retry_delay");
+@@ -166,7 +244,7 @@
+             break;
+         case MATCH_UNKNOWN_ERROR:
+             stopVerify();
+-            m_sFailureReason = "Fingerprint auth disabled (unknown error)";
++            recover("Fingerprint unavailable (unknown error)", false);
+             break;
+         case MATCH_MATCHED:
+             stopVerify();
+@@ -175,23 +253,22 @@
+             break;
+         case MATCH_RETRY:
+             retry     = true;
+-            m_sPrompt = "Please retry fingerprint scan";
++            m_sPrompt = "󰈷 Please retry fingerprint scan";
+             break;
+         case MATCH_SWIPE_TOO_SHORT:
+             retry     = true;
+-            m_sPrompt = "Swipe too short - try again";
++            m_sPrompt = "󰈷 Swipe too short - try again";
+             break;
+         case MATCH_FINGER_NOT_CENTERED:
+             retry     = true;
+-            m_sPrompt = "Finger not centered - try again";
++            m_sPrompt = "󰈷 Finger not centered - try again";
+             break;
+         case MATCH_REMOVE_AND_RETRY:
+             retry     = true;
+-            m_sPrompt = "Remove your finger and try again";
++            m_sPrompt = "󰈷 Remove your finger and try again";
+             break;
+         case MATCH_DISCONNECTED:
+-            m_sFailureReason   = "Fingerprint device disconnected";
+-            m_sDBUSState.abort = true;
++            recover("Fingerprint unavailable (device disconnected)", true);
+             break;
+     }
+ 
+@@ -207,9 +284,12 @@
+ void CFingerprint::claimDevice() {
+     const auto currentUser = ""; // Empty string means use the caller's id.
+     m_sDBUSState.device->callMethodAsync("Claim").onInterface(DEVICE).withArguments(currentUser).uponReplyInvoke([this](std::optional<sdbus::Error> e) {
+-        if (e)
++        if (e) {
+             Log::logger->log(Log::WARN, "fprint: could not claim device, {}", e->what());
+-        else {
++            // Drop the proxy so the retry starts over from GetDefaultDevice.
++            m_sDBUSState.device.reset();
++            recover("Fingerprint unavailable (could not claim the sensor)", false);
++        } else {
+             Log::logger->log(Log::INFO, "fprint: claimed device");
+             startVerify();
+         }
+@@ -229,14 +309,17 @@
+     m_sDBUSState.device->callMethodAsync("VerifyStart").onInterface(DEVICE).withArguments(finger).uponReplyInvoke([this, isRetry](std::optional<sdbus::Error> e) {
+         if (e) {
+             Log::logger->log(Log::WARN, "fprint: could not start verifying, {}", e->what());
+-            if (isRetry)
+-                m_sFailureReason = "Fingerprint auth disabled (failed to restart)";
++            recover(isRetry ? "Fingerprint unavailable (failed to restart)" : "Fingerprint unavailable (failed to start)", true);
+ 
+         } else {
+             Log::logger->log(Log::INFO, "fprint: started verifying");
++            m_bVerifyActive   = true;
++            m_verifyStartedAt = std::chrono::steady_clock::now();
++            // A re-armed verify must report finger-present again.
++            m_sDBUSState.done = false;
+             if (isRetry) {
+                 m_sDBUSState.retries++;
+-                m_sPrompt = "Could not match fingerprint. Try again.";
++                m_sPrompt = "󰈷 Could not match fingerprint. Try again.";
+             } else
+                 m_sPrompt = m_sFingerprintReady;
+         }
+--- a/src/auth/Fingerprint.hpp
++++ b/src/auth/Fingerprint.hpp
+@@ -2,6 +2,7 @@
+ 
+ #include "Auth.hpp"
+ 
++#include <chrono>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -29,6 +30,7 @@
+         std::shared_ptr<sdbus::IConnection> connection;
+         std::unique_ptr<sdbus::IProxy>      login;
+         std::unique_ptr<sdbus::IProxy>      device;
++        std::unique_ptr<sdbus::IProxy>      bus;
+ 
+         bool                                abort     = false;
+         bool                                done      = false;
+@@ -44,6 +46,13 @@
+     std::string m_sFailureReason{""};
+ 
+     void        handleVerifyStatus(const std::string& result, const bool done);
++    void        disable(const std::string& reason);
++    void        recover(const std::string& reason, bool dropDevice);
++
++    bool                                  m_bRestartPending = false;
++    bool                                  m_bVerifyActive   = false;
++    int                                   m_iBackoffMs      = 1000;
++    std::chrono::steady_clock::time_point m_verifyStartedAt;
+ 
+     bool        createDeviceProxy();
+     void        claimDevice();
+--- a/src/auth/Pam.cpp
++++ b/src/auth/Pam.cpp
+@@ -125,6 +125,8 @@
+     }
+ 
+     ret = pam_authenticate(handle, 0);
++    // pam_strerror needs the handle, so take it before pam_end frees it.
++    const std::string PAMERROR = pam_strerror(handle, ret);
+     pam_end(handle, ret);
+     handle = nullptr;
+ 
+@@ -132,7 +134,7 @@
+ 
+     if (ret != PAM_SUCCESS) {
+         if (!m_sConversationState.failTextFromPam)
+-            m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
++            m_sConversationState.failText = PAMERROR;
+         Log::logger->log(Log::ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
+         return false;
+     }

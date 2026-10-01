@@ -7,6 +7,24 @@ let
   # Pointer-at-the-top-edge trigger behind the fullscreen bar peek — nothing
   # packaged does this on niri. See ./top-edge-sensor.nix.
   top-edge-sensor = pkgs.callPackage ./top-edge-sensor.nix { };
+
+  # hyprlock's auth messages, patched so each kind has one place to appear:
+  #  - PASSWORD failures show PAM's own pam_strerror() in the input field,
+  #    instead of a fixed "Authentication failed" — the same text SDDM hands
+  #    the login screen, so both screens name the same cause.
+  #  - FINGERPRINT failures no longer go to the field at all; they appear only
+  #    in the $FPRINTPROMPT label (../../config/hypr/hyprlock.conf).
+  #  - Only TOO MANY wrong fingers disables fingerprint unlock for good, and
+  #    the label says so. Every other error re-arms the sensor: the elanmoc2
+  #    driver's ~10s no-finger timeout (fprintd's "verify-unknown-error",
+  #    which stock hyprlock treats as fatal) silently, a real outage (fprintd
+  #    crashed or missing, sensor unclaimable) with "Fingerprint unavailable
+  #    (…)" in the label and a retry backing off to 30s.
+  #  - hyprlock's hardcoded retry prompts get the same 󰈷 icon as the
+  #    configured ready/present messages; the "disabled" reasons do not.
+  hyprlock = pkgs.hyprlock.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./hyprlock-auth-messages.patch ];
+  });
 in
 {
   programs.niri.enable = true;
