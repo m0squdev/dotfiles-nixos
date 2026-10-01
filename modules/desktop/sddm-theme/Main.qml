@@ -327,8 +327,24 @@ Item {
         // to be grown by the outline on both sides to put the same number of
         // pixels in the same places — without this the greeter drew the whole
         // field 8px narrower and shorter than the lock screen's.
-        width: root.fieldWidth + 2 * root.outlineWidth
+        //
+        // While empty it also WIDENS to fit what it is showing, which is
+        // hyprlock's updateWidth():
+        //     if (passwordLength == 0 && placeholder.asset)
+        //         targetSizeX = placeholder.asset->m_vSize.x + size->goal().y;
+        //     targetSizeX = std::max(targetSizeX, configSize.x);
+        // The normal placeholder fits inside FieldWidth, so in practice this
+        // only fires for the failure message, which is wider.
+        width: (placeholder.visible
+                ? Math.max(root.fieldWidth, placeholder.implicitWidth + root.fieldHeight)
+                : root.fieldWidth) + 2 * root.outlineWidth
         height: root.fieldHeight + 2 * root.outlineWidth
+        Behavior on width {
+            NumberAnimation {
+                duration: parseInt(config.DotsAnimationMs)
+                easing.type: Easing.OutCubic
+            }
+        }
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         // hyprlock's `position = 0, -20` on a centre-aligned input-field, i.e.
@@ -380,11 +396,14 @@ Item {
                 // it from the height rather than hardcoding 30 keeps it a pill
                 // if FieldHeight is ever changed.
                 radius: height / 2
-                // hyprlock's outline_thickness = 4, in its accent colour. The
-                // outline turns yellow while caps lock is on, exactly as
-                // hyprlock's capslock_color does.
+                // hyprlock's outline_thickness = 4, in its accent colour. It
+                // turns red while a failure is shown and yellow while caps
+                // lock is on, in that order of precedence — hyprlock's
+                // updateColors() lets fail_color override capslock_color.
                 border.width: root.outlineWidth
-                border.color: keyboard.capsLock ? root.cYellow : root.cAccent
+                border.color: root.errorText !== ""
+                              ? root.cRed
+                              : (keyboard.capsLock ? root.cYellow : root.cAccent)
             }
 
             // hyprlock has no text caret at all — it draws dots and nothing
@@ -529,16 +548,36 @@ Item {
         // submit and the frozen dots keep it non-empty. hyprlock's draw() skips
         // its placeholder for the same window whenever check_text is unset, so
         // neither screen puts a message where the dots are.
+        //
+        // A FAILURE TAKES THIS SAME SLOT. hyprlock swaps placeholder_text for
+        // fail_text = <i>$FAIL <b>($ATTEMPTS)</b></i> and renders it in
+        // fail_color, inside the field rather than on a line of its own; it
+        // goes back to the placeholder on the next keypress or after
+        // general:fail_timeout (2000ms, left at its default). The greeter used
+        // to print its failures under the field instead.
         Text {
+            id: placeholder
             anchors.centerIn: parent
-            visible: passwordField.text.length === 0
+            // `checking` as well as the empty field: deleting what was typed
+            // DURING a check empties the field while the frozen dots stay,
+            // and the prompt would be drawn on top of them. hyprlock's draw()
+            // keys off checkWaiting, not the buffer, for the same reason.
+            visible: passwordField.text.length === 0 && !root.checking
             renderType: Text.NativeRendering
             textFormat: Text.StyledText
             font.family: root.fontFamily
             font.pixelSize: root.fieldFontSize
-            color: root.cText
-            text: "<i>󰌾 Logged in as </i><font color=\"" + root.cAccent + "\">"
-                  + root.currentUser + "</font>"
+            color: root.errorText !== "" ? root.cRed : root.cText
+            text: root.errorText !== ""
+                  ? "<i>" + root.errorText + " <b>(" + root.failCount + ")</b></i>"
+                  : "<i>󰌾 Logged in as </i><font color=\"" + root.cAccent + "\">"
+                    + root.currentUser + "</font>"
+        }
+
+        Timer {
+            interval: 2000
+            running: root.errorText !== ""
+            onTriggered: root.errorText = ""
         }
 
         // The X server parks the pointer at the exact centre of the screen on
@@ -558,31 +597,6 @@ Item {
             acceptedButtons: Qt.NoButton
             cursorShape: Qt.ArrowCursor
         }
-    }
-
-    // --- status line under the field ----------------------------------------
-    // Occupies the slot hyprlock gives $FAIL and $FPRINTPROMPT. Caps lock gets
-    // priority because it is the likeliest cause of a rejected password.
-    Text {
-        z: 3
-        anchors {
-            top: parent.verticalCenter
-            topMargin: root.fieldHeight + root.fieldOffsetY
-            horizontalCenter: parent.horizontalCenter
-        }
-        renderType: Text.NativeRendering
-        textFormat: Text.StyledText
-        font.family: root.fontFamily
-        font.pixelSize: root.statusFontSize
-        font.italic: true
-        color: keyboard.capsLock ? root.cYellow : root.cRed
-        // Mirrors hyprlock's `fail_text = <i>$FAIL <b>($ATTEMPTS)</b></i>`,
-        // attempt counter and all.
-        text: keyboard.capsLock
-              ? "Caps Lock is on"
-              : (root.errorText === ""
-                 ? ""
-                 : root.errorText + " <b>(" + root.failCount + ")</b>")
     }
 
     // --- session picker, bottom-left ----------------------------------------
