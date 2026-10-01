@@ -107,15 +107,20 @@
  }
  
  void CFingerprint::handleInput(const std::string& input) {
-@@ -112,6 +189,7 @@
+@@ -112,6 +189,12 @@
          proxy->callMethod("GetDefaultDevice").onInterface(MANAGER).storeResultsTo(path);
      } catch (sdbus::Error& e) {
          Log::logger->log(Log::WARN, "fprint: couldn't connect to Fprint service ({})", e.what());
++        // No fprintd installed at all means this machine has no fingerprint
++        // unlock, not an outage: stay silent, as stock hyprlock does, and do
++        // not retry, since nothing will ever answer.
++        if (e.getName() == "org.freedesktop.DBus.Error.ServiceUnknown")
++            return false;
 +        recover("Fingerprint unavailable (fingerprint service unavailable)", false);
          return false;
      }
      Log::logger->log(Log::INFO, "fprint: using device path {}", path.c_str());
-@@ -156,7 +234,7 @@
+@@ -156,7 +239,7 @@
          case MATCH_NO_MATCH:
              stopVerify();
              if (m_sDBUSState.retries >= 3) {
@@ -124,7 +129,7 @@
              } else {
                  done                         = false;
                  static const auto RETRYDELAY = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:retry_delay");
-@@ -166,7 +244,7 @@
+@@ -166,7 +249,7 @@
              break;
          case MATCH_UNKNOWN_ERROR:
              stopVerify();
@@ -133,7 +138,7 @@
              break;
          case MATCH_MATCHED:
              stopVerify();
-@@ -175,23 +253,22 @@
+@@ -175,23 +258,22 @@
              break;
          case MATCH_RETRY:
              retry     = true;
@@ -162,7 +167,7 @@
              break;
      }
  
-@@ -207,9 +284,12 @@
+@@ -207,9 +289,12 @@
  void CFingerprint::claimDevice() {
      const auto currentUser = ""; // Empty string means use the caller's id.
      m_sDBUSState.device->callMethodAsync("Claim").onInterface(DEVICE).withArguments(currentUser).uponReplyInvoke([this](std::optional<sdbus::Error> e) {
@@ -177,7 +182,7 @@
              Log::logger->log(Log::INFO, "fprint: claimed device");
              startVerify();
          }
-@@ -229,14 +309,17 @@
+@@ -229,14 +314,17 @@
      m_sDBUSState.device->callMethodAsync("VerifyStart").onInterface(DEVICE).withArguments(finger).uponReplyInvoke([this, isRetry](std::optional<sdbus::Error> e) {
          if (e) {
              Log::logger->log(Log::WARN, "fprint: could not start verifying, {}", e->what());

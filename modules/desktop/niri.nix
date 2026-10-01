@@ -19,7 +19,8 @@ let
   #    driver's ~10s no-finger timeout (fprintd's "verify-unknown-error",
   #    which stock hyprlock treats as fatal) silently, a real outage (fprintd
   #    crashed or missing, sensor unclaimable) with "Fingerprint unavailable
-  #    (…)" in the label and a retry backing off to 30s.
+  #    (…)" in the label and a retry backing off to 30s. A host without fprintd
+  #    installed (no ../hardware/fingerprint.nix) shows nothing, as stock does.
   #  - hyprlock's hardcoded retry prompts get the same 󰈷 icon as the
   #    configured ready/present messages; the "disabled" reasons do not.
   hyprlock = pkgs.hyprlock.overrideAttrs (old: {
