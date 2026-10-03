@@ -377,8 +377,8 @@ spawn-sh-at-startup "swaybg -m fill -i ~/.local/share/backgrounds/wall.jpg || sw
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
 
 hotkey-overlay {
-    // Uncomment this line to disable the "Important Hotkeys" pop-up at startup.
-    // skip-at-startup
+    // Don't show the "Important Hotkeys" pop-up at startup (Mod+Shift+Slash still opens it).
+    skip-at-startup
 }
 
 // Uncomment this line to ask the clients to omit their client-side decorations if possible.
